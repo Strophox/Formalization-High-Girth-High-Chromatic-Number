@@ -1,1 +1,4 @@
 .lake/
+
+Playground/*
+!Playground/Playground.lean

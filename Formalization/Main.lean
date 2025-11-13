@@ -2,6 +2,7 @@ import Mathlib.Tactic
 
 set_option autoImplicit false
 -- set_option tactic.hygienic false
+set_option linter.style.longLine false
 
 theorem high_girth_high_chromatic_number {k : ℕ} {l : ℕ} : 2+2=4 := by
 
@@ -24,9 +25,9 @@ theorem high_girth_high_chromatic_number {k : ℕ} {l : ℕ} : 2+2=4 := by
   --## lim n → ∞: P[X ≥ n/2] → 0                                         by: ???
   --#  ∀ ε>0, ∃ n₁, P[X ≥ n₁/2] < ε                                      by:def lim?
 
-  --#  let x := ⌈3/p * ln(n)⌉
   --## let α(G) := "largest independent set of G"
 
+  --#  let x := ⌈3/p * ln(n)⌉
   --## Pr[α(G) ≥ x] ≤ choose(n,x)                * (1 - p)^choose(x,2)       by:that's just how it is
   --#  Pr[α(G) ≥ x] ≤ ( n * ⋯ * n-(x-1) )/( x! ) * (1 - p)^(x*(x-1)/2)       by:def choose
   --#  Pr[α(G) ≥ x] ≤ ( n * ⋯ * n-(x-1) )/( x! ) *  e^(-p)^(x*(x-1)/2)       by:recall e^x := 1 + x + x^2/4 + …
