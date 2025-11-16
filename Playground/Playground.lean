@@ -1,21 +1,83 @@
+import Mathlib
 import Mathlib.Tactic
 
-set_option autoImplicit false
--- set_option tactic.hygienic false
+/-
+log: leanprover/lean4:v4.25.0-rc2
+-/
+
+set_option linter.style.longLine false -- Disable warning on lines exceeding 100 char lim$it.
+set_option autoImplicit false -- NOTE: Idk what this actually does.
+--set_option tactic.hygienic false -- NOTE: Idk what this actually does. Some linter stuff I guess.
+set_option linter.style.lambdaSyntax false -- Allow using "λx ↦ ..." instead of "fun x ↦ ..."
 
 
--- hello, world.
-example : 1 + 1 = 2 := by rfl
 
-def fac n := if n = 0 then 0 else n * fac (n-1)
+/- # hello, world
+Further information / sources:
+* —
+---------------------------------------------------------------------------------------------------/
 
--- This symbol 𝕲/𝔊 (\mathfrak{G}) was used by Paul Erdős
--- and we will too because it looks messed up.
--- (Honourable mentions: 𝕰/𝔈 (E), 𝕾/𝔖 (S), 𝖂/𝔚 (W), 𝖄/𝔜 (Y))
-example : ∀(𝕲 : ℕ), 𝕲 = 𝕲 := by intro; rfl
+example : 1 + 2 = 3 := by rfl
+
+---------------------------------------------------------------------------------------------------/
 
 
--- Probability theory shenanigans.
+
+/- # stuff
+Further information / sources:
+* slop provided by Google's slop machine
+---------------------------------------------------------------------------------------------------/
+
+open SimpleGraph
+open MeasureTheory ProbabilityTheory
+open scoped ENNReal
+
+-- The type of possible edges {i,j} with i < j
+abbrev Edge (n : ℕ) := { e : Fin n × Fin n // e.1 < e.2 }
+
+-- Build the product probability space of independent Bernoulli(p) edges
+noncomputable def GnpSampleSpace (n : ℕ) (p : ℝ≥0∞) : Measure (Edge n → Bool) :=
+  Measure.pi fun _ => bernoulli (p : ℝ≥0∞) -- TODO: Find the right bernoulli function
+
+-- The random graph obtained from an ω : Edge n → Bool
+def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
+| ω =>
+  {
+    adj := fun i j =>
+      if h : i < j then ω ⟨(i, j), h⟩
+      else if h' : j < i then ω ⟨(j, i), h'⟩
+      else False
+    symm := by
+      intro i j h
+      -- graph is symmetric because ω is symmetric by construction
+      by_cases hij : i < j
+      · have : j < i := lt_of_le_of_ne (le_of_not_gt hij) (by intro; simpa [*] using h)
+        simpa [GnpGraph, hij, this] using h
+      · ...
+    loopless := ...
+  }
+
+/-theorem MeasureTheory.meas_ge_le_lintegral_div
+  {α : Type u_1}
+  [MeasurableSpace α]
+  {μ : Measure α}
+  {f : α → ENNReal}
+  (hf : AEMeasurable f μ)
+  {ε : ENNReal}
+  (hε : ε ≠ 0)
+  (hε' : ε ≠ ⊤) :
+    μ {x : α | ε ≤ f x} ≤ (∫⁻ (a : α), f a ∂μ) / ε
+-/
+
+---------------------------------------------------------------------------------------------------/
+
+
+
+/- # Probability theory in Lean 4 using measure theory(?)
+Further information / sources:
+* <https://leanprover-community.github.io/blog/posts/basic-probability-in-mathlib/>
+---------------------------------------------------------------------------------------------------
+
 open MeasureTheory ProbabilityTheory
 open scoped ENNReal
 
@@ -29,3 +91,78 @@ example (P : Measure ℝ) (s : Set ℝ) : ℝ≥0∞ := P s
 
 -- Random variable.
 variable {Ω : Type*} [MeasurableSpace Ω] {X : Ω → ℝ} (hX : Measurable X)
+---------------------------------------------------------------------------------------------------/
+
+
+
+/- # WuS script (Martin Schweizer) examples using measure(?)
+Further information / sources:
+* (Help from Google's Gemini.)
+---------------------------------------------------------------------------------------------------
+
+example : Fin 2 := 0
+example : Fin 2 := 1
+example : Fin 2 := 3 -- This is the same as 1.
+
+def CoinOutcome' : Type := Fin 2
+--example : CoinOutcome' := 0 -- This doesn't work.
+example : CoinOutcome' := ⟨0, by trivial⟩ -- This works.
+
+abbrev CoinOutcome : Type := Fin 2 -- Just a syntactic abbreviation(?)...
+example : CoinOutcome := 3
+
+-- Sample space (Ω) for two coin flips.
+def Ω_flips : Type := CoinOutcome × CoinOutcome
+
+example : Ω_flips := (0,0)
+
+def Event_AtLeastOne1 : Set Ω_flips :=
+  {(0,1), (1,0), (1,1)}
+
+open MeasureTheory ProbabilityTheory
+variable {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
+
+def
+
+example : ℙ[mindestens einmal 1] = 3/4
+-------------------------------------------------------------------------------/
+
+
+
+/- # Discrete probability stuff without measure(?)
+Further information / sources:
+* <https://leanprover.zulipchat.com/#narrow/channel/113489-new-members/topic/basic.20discrete.20probability/with/538351056>
+---------------------------------------------------------------------------------------------------
+
+variable {α β : Type*} [DecidableEq α] [DecidableEq β] [Fintype α] [Fintype β]
+abbrev RandomVariable α β := α → β
+abbrev Event β := Finset β
+
+--abbrev Pr (X : RandomVariable α β) (S : Event β) := (Finset.univ.filter (X · ∈ S)).dens
+abbrev Pr (X : RandomVariable α β) (S : Event β) := (Finset.univ.filter (λa ↦ X a ∈ S)).dens
+abbrev X : RandomVariable (Fin 2) (Fin 2) := id
+
+#eval Pr X ∅
+#eval Pr X { 0 }
+#eval Pr X { 1 }
+#eval Pr X { 0, 1 }
+
+abbrev one_minus_X : RandomVariable (Fin 2) (Fin 2) := (1 - ·) ∘ X
+
+#eval Pr one_minus_X { }
+#eval Pr one_minus_X { 0 }
+#eval Pr one_minus_X { 1 }
+#eval Pr one_minus_X { 0, 1 }
+
+example : Pr X = Pr one_minus_X := funext (by decide +kernel)
+
+abbrev X' : RandomVariable (Fin 2) (Fin 2) := id
+
+abbrev X_add_X' : RandomVariable (Fin 2 × Fin 2) (Fin 3) := fun (a, b) => ⟨(X a).1 + (X' b).1, by grind⟩
+
+#eval Pr X_add_X' {0}
+#eval Pr X_add_X' {1}
+#eval Pr X_add_X' {2}
+
+example : Pr X_add_X' {1} = 1 / 2 := by decide +kernel
+---------------------------------------------------------------------------------------------------/
