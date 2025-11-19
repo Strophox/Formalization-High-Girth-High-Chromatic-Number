@@ -1,5 +1,16 @@
-import Mathlib
-import Mathlib.Tactic
+--import Mathlib -- The Kitchen sink.
+import Mathlib.Tactic.Common
+import Mathlib.Combinatorics.SimpleGraph.Basic
+--import Mathlib.Combinatorics.SimpleGraph.Girth
+--import Mathlib.Combinatorics.SimpleGraph.Coloring
+--import Mathlib.MeasureTheory.MeasurableSpace.Defs
+import Mathlib.Probability.ProbabilityMassFunction.Constructions
+import Mathlib.MeasureTheory.Measure.MeasureSpaceDef
+--import Mathlib.MeasureTheory.MeasurableSpace.Basic
+--import Mathlib.Data.ENNReal.Basic -- ℝ≥0∞
+import Mathlib.Data.NNReal.Basic -- ℝ≥0
+import Init.Notation -- For ℝ≥0 ?...
+import ImportGraph.Meta -- #min_imports
 
 /-
 log: leanprover/lean4:v4.25.0-rc2
@@ -23,21 +34,24 @@ example : 1 + 2 = 3 := by rfl
 
 
 
-/- # stuff
+/- # Measure stuff experiment 01
 Further information / sources:
 * slop provided by Google's slop machine
 ---------------------------------------------------------------------------------------------------/
 
-open SimpleGraph
-open MeasureTheory ProbabilityTheory
-open scoped ENNReal
+--open SimpleGraph
+open MeasureTheory
+--open MeasureTheory ProbabilityTheory
+--open scoped ENNReal
 
 -- The type of possible edges {i,j} with i < j
 abbrev Edge (n : ℕ) := { e : Fin n × Fin n // e.1 < e.2 }
 
+/-
 -- Build the product probability space of independent Bernoulli(p) edges
-noncomputable def GnpSampleSpace (n : ℕ) (p : ℝ≥0∞) : Measure (Edge n → Bool) :=
-  Measure.pi fun _ => bernoulli (p : ℝ≥0∞) -- TODO: Find the right bernoulli function
+noncomputable def GnpSampleSpace (n : ℕ) (p : NNReal) (h : p ≤ 1) : Measure (Edge n → Bool) :=
+  Measure.pi fun _ => PMF.bernoulli (p : NNReal) h -- "Measure.pi" was simply slopped into existence here.
+-/
 
 -- The random graph obtained from an ω : Edge n → Bool
 def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
@@ -57,6 +71,7 @@ def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
     loopless := ...
   }
 
+
 /-theorem MeasureTheory.meas_ge_le_lintegral_div
   {α : Type u_1}
   [MeasurableSpace α]
@@ -71,9 +86,17 @@ def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
 
 ---------------------------------------------------------------------------------------------------/
 
+-- Why do we not get information about the following?...
+#min_imports in Measure
+#min_imports in MeasureSpace
+--#min_imports in MeasurableSpace
+#min_imports in ProbabilityMeasure
+#min_imports in IsProbabilityMeasure
+#min_imports in MeasureTheory
+--ProbabilityTheory
 
 
-/- # Probability theory in Lean 4 using measure theory(?)
+/- # 'Probability theory in Lean 4 using measure theory'
 Further information / sources:
 * <https://leanprover-community.github.io/blog/posts/basic-probability-in-mathlib/>
 ---------------------------------------------------------------------------------------------------
@@ -95,7 +118,7 @@ variable {Ω : Type*} [MeasurableSpace Ω] {X : Ω → ℝ} (hX : Measurable X)
 
 
 
-/- # WuS script (Martin Schweizer) examples using measure(?)
+/- # 'WuS script (Martin Schweizer) examples using measure'
 Further information / sources:
 * (Help from Google's Gemini.)
 ---------------------------------------------------------------------------------------------------
@@ -129,7 +152,7 @@ example : ℙ[mindestens einmal 1] = 3/4
 
 
 
-/- # Discrete probability stuff without measure(?)
+/- # 'Discrete probability stuff without measure'
 Further information / sources:
 * <https://leanprover.zulipchat.com/#narrow/channel/113489-new-members/topic/basic.20discrete.20probability/with/538351056>
 ---------------------------------------------------------------------------------------------------
