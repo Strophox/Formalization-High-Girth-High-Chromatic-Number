@@ -45,7 +45,8 @@ open MeasureTheory
 --open scoped ENNReal
 
 -- The type of possible edges {i,j} with i < j
-abbrev Edge (n : ℕ) := { e : Fin n × Fin n // e.1 < e.2 }
+abbrev Edges (n : ℕ) := { e : Fin n × Fin n // e.1 < e.2 }
+--abbrev Edges (n : ℕ) : Finset (Fin n × Fin n) := Finset.filter (λ(n,m) ↦ n < m) --{ e : Fin n × Fin n // e.1 < e.2 }
 
 /-
 -- Build the product probability space of independent Bernoulli(p) edges
@@ -53,6 +54,7 @@ noncomputable def GnpSampleSpace (n : ℕ) (p : NNReal) (h : p ≤ 1) : Measure 
   Measure.pi fun _ => PMF.bernoulli (p : NNReal) h -- "Measure.pi" was simply slopped into existence here.
 -/
 
+/-
 -- The random graph obtained from an ω : Edge n → Bool
 def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
 | ω =>
@@ -70,6 +72,15 @@ def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
       · ...
     loopless := ...
   }
+-/
+
+def G (n : ℕ) (p : ENNReal) (hp : p ≤ 1) : "Type of all" SimpleGraph (Fin n) :=
+
+  let graph_from (s : Finset (Fin n × Fin n)) : SimpleGraph (Fin n) :=
+    sorry
+
+  Finset.univ.map Finset (Fin n × Fin n).univ
+ -- { (graph_from s) : SimpleGraph (Fin n) | s ∈ Set (Fin n × Fin n).univ}
 
 
 /-theorem MeasureTheory.meas_ge_le_lintegral_div
