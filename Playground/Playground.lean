@@ -78,8 +78,9 @@ def G (n : ℕ) (p : ENNReal) (hp : p ≤ 1) : "Type of all" SimpleGraph (Fin n)
 
   let graph_from (s : Finset (Fin n × Fin n)) : SimpleGraph (Fin n) :=
     sorry
+  sorry
 
-  Finset.univ.map Finset (Fin n × Fin n).univ
+  -- Finset.univ.map Finset (Fin n × Fin n).univ
  -- { (graph_from s) : SimpleGraph (Fin n) | s ∈ Set (Fin n × Fin n).univ}
 
 
