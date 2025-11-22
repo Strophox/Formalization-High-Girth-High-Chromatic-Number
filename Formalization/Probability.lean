@@ -1,6 +1,6 @@
-import Mathlib.Tactic
-open MeasureTheory ProbabilityTheory ProbabilityTheory
-open scoped ENNReal
+import Mathlib
+open MeasureTheory ProbabilityTheory
+open scoped ENNReal NNReal
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
@@ -8,19 +8,22 @@ set_option linter.style.commandStart false
 variable {Ω : Type*} [MeasurableSpace Ω] {P : Measure Ω} [IsProbabilityMeasure P]
 
 /- # General Probability Structure #
-This structure is for defining general probability structures.
-Use def to create an instance of it.  -/
+This structure is for defining general probability structures
+over a n-size event space -/
 structure Probability (α : Type*) where
  EventSpace     : MeasurableSpace α
- P              : PMF α
-/- EXAMPLE: COIN THROW -/
-inductive coin where
-| head
-| tail
-def coinOmega1 : MeasurableSpace coin := MeasurableSpace.generateFrom {{coin.head},{coin.tail}}
-instance coin_toss : Probability coin := {
-    EventSpace := coinOmega1,
-    P := sorry
-}
+ Measure        : PMF α
+
+/-==============================================================-/
+/-EXAMPLE COIN-/
+noncomputable
+def coin : Probability Bool where
+ EventSpace := MeasurableSpace.generateFrom {{true},{false}}
+ Measure := PMF.bernoulli (1/2 : ℝ≥0) (by norm_num)
+/-FIRST PROOF YIPPIE!!!!!-/
+example:
+    coin.Measure false + coin.Measure true = 1 := by
+    unfold coin; simp; rw[ENNReal.inv_two_add_inv_two]
+/-==============================================================-/
 
 #check IsProbabilityMeasure
