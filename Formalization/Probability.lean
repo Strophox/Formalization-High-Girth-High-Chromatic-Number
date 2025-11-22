@@ -12,7 +12,7 @@ variable (G : SimpleGraph (Fin n))
 
 /-
 # SETUP #
-Here we setup the basic probability notion, in conjonction with Graphs, that will be needed for
+Here we setup the basic probability notion, in conjnction with Graphs, that will be needed for
 the proof.
 -/
 
