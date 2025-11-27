@@ -7,95 +7,67 @@ set_option linter.style.commandStart false
 
 variable {α : Type*}
 variable {n : ℕ}
-variable (G : SimpleGraph (Fin n))
+abbrev graph (n : ℕ) := SimpleGraph (Fin n)
 
 /-
-# SETUP #
+# Probability Space #
 Here we setup the basic probability notion, in conjnction with Graphs, that will be needed for
 the proof.
 -/
 
-/-
-# DEFINING 'EDGES' #
-'Edges' is the underlying measure of our random Graph formalization and is foundational.
--/
-abbrev Edges := G.edgeSet → Bool -- Determines if edge is in Graph
--- No clue what these do yet
-noncomputable instance : Fintype (Edges G) := by exact Fintype.ofFinite (Edges G)
-noncomputable instance {u v} :  Decidable (G.Adj u v) := by
-    exact Classical.propDecidable (G.Adj u v)
-instance : DiscreteMeasurableSpace (Edges G) := by
-    exact MeasurableSingletonClass.toDiscreteMeasurableSpace
+abbrev pr_bound (p : ℝ≥0) := 0 ≤ p ∧ p ≤ 1
 
--- Our measure that maps an edge to its probability of existing
-noncomputable
-def unif_edge_measure (p : ℝ≥0)(h : p ≤ 1) : Measure Bool := (PMF.bernoulli p h).toMeasure
--- Proof that unif_edge_measure is indeed a probability measure
-instance unif_edge_measure_isProbabilityMeasure {p : ℝ≥0}{h: p ≤ 1}:
-    IsProbabilityMeasure (unif_edge_measure p h):= by {
-        rw [@isProbabilityMeasure_iff]
-        simp only [Bool.univ_eq]
-        unfold unif_edge_measure
-        -- Bruhmetheus Momentum
-        simp only [PMF.toMeasure_apply_fintype, Fintype.univ_bool,
-          Set.mem_insert_iff, Set.mem_singleton_iff, Bool.eq_false_or_eq_true_self,
-          Set.indicator_of_mem, PMF.bernoulli_apply, Finset.mem_singleton, Bool.true_eq_false,
-          not_false_eq_true, Finset.sum_insert, cond_true, Finset.sum_singleton, cond_false,
-          ENNReal.coe_sub, ENNReal.coe_one]
-        simp_all only [ENNReal.coe_le_one_iff, add_tsub_cancel_of_le]
-    }
--- Maps an Edgeset to unif_edge_measure
-instance unif_edgeset_measure_isProbabilityMeasure (p : ℝ≥0)(h:p ≤ 1) :
-    IsProbabilityMeasure (Measure.pi (fun _ : G.edgeSet ↦ unif_edge_measure p h)) :=
-    Measure.pi.instIsProbabilityMeasure fun _ ↦ unif_edge_measure p h
--- I think this tell Lean that this is a probability measure i.e. PMF. No clue exactly though
-noncomputable
-def Prob (p : ℝ≥0)(h: p ≤ 1) : PMF (Edges G) :=
-    (Measure.pi (fun _ => unif_edge_measure p h)).toPMF
+def Dist_Bernoulli (b : Bool)(p : ℝ≥0)(_ : pr_bound p) : ℝ≥0 := if b then p else 1 - p
 
-/-
-# Random Graphs Basic #
-ATTENTION! Is only correct if ω is correctly formalized!
--/
-noncomputable
-def R_Graph (ω : Edges G) : SimpleGraph (Fin n) where
-    Adj u v := ∃(h : s(u,v) ∈ G.edgeSet), ω ⟨s(u,v),h⟩
-    loopless := by simp only [Irreflexive,
-        SimpleGraph.mem_edgeSet, SimpleGraph.irrefl,
-        IsEmpty.exists_iff, not_false_eq_true, implies_true]
-    symm := by
-        rintro u v ⟨h1,h2⟩
-        observe h : s(v,u) = s(u,v)
-        rw [h]; use h1
+/- Probability Space Definition (General) -/
+structure PrSpace (Ω : Set α)[Finite Ω] where
+    Sa := Ω
+    Ev := Ω.powerset -- overwriteable
+    Pr : Ev → ℝ≥0
+    -- General conditions
+    Sa_c : Sa = Ω           -- ENSURES that sample space is the passed argument
+    Ev_c : Ev ⊆ Ω.powerset  -- ENSURES that any Event Space is a subset of the powerset
+    /- CONDITIONS FOR THE EVENT SPACE -/
+    -- Everything happening is a Event
+    base : Ω ∈ Ev
+    /-  The complement of an Event is still an Event
+        Here adapted to treat the set as universe
+        Might be a smarter way to do this... (Somhow treat it as a type) -/
+    compl : ∀e ∈ Ev, {x ∈ Sa | x ∉ e} ∈ Ev
+    -- TODO (Any countable union of Events is still an Event)
+    union : sorry
+    /- CONDITIONS FOR THE PROBABILITY MEASURE -/
+    -- Probabilities are between 0 and 1
+    bound : ∀(e : Ev), 0 ≤ Pr e ∧ Pr e ≤ 1
+    -- Pr ∅ = 0
+    zero :
+        Pr ⟨∅,by
+        subst Sa_c;apply compl at base
+        have null : {x | x ∈ Sa ∧ x ∉ Sa} = ∅ := by {
+            simp only [and_not_self, Set.setOf_false]
+        }; rw [←null]; trivial
+        ⟩ = 0 -- Real annoying that I had to show this explicitly
+    -- TODO (The probability of the union of DISJOINT Events
+    --      is the same as the sum of their singular probabilities)
+    additive : sorry
 
-/-  Show that the probability function works correctly,
-    I.E. Edge should exist with probability p! -/
-theorem Pr_edge {n : ℕ} (p : ℝ≥0) (h : p ≤ 1)
-  (G : SimpleGraph (Fin n)) :
-  let P := (Prob G p h).toMeasure;
-  ∀(e : Sym2 (Fin n))(h : e ∈ G.edgeSet), P.real {ω | ω ⟨e, h⟩ = true} = p := by
-    intro P e H
-    unfold Measure.real
-    simp [P, Prob, unif_edge_measure,Measure.toPMF_toMeasure]
-    sorry
+/- Probability Space Definition (Graph) -/
+def PrSpace_G {n : ℕ}(G : graph n) : PrSpace G.edgeSet where
+    Sa_c := by rfl
+    Ev_c := by rfl
+    Pr := sorry
+    base := by simp only [Set.mem_powerset_iff, subset_refl]
+    compl := by simp only [Set.mem_powerset_iff, Set.sep_subset, implies_true]
+    union := sorry
+    bound := sorry
+    zero := sorry
+    additive := sorry
 
-def POW (base : Set α) : Set (Set α) := {A : Set α | A ⊆ base}
-/-
-# Expected Values (#Cycles smaller than l)#
-Will be needed for various proofsteps
--/
-/- Define sets of edges -/
-abbrev edgesets := POW G.edgeSet → ℕ
-noncomputable instance : Fintype (edgesets G) := by
-    unfold edgesets
-    have finApow : Finite (POW G.edgeSet) → ℕ := by
-        unfold POW
-    refine Fintype.ofFinite (↑(POW G.edgeSet) → ℕ))
-instance : DiscreteMeasurableSpace (edgesets G) := by
-    exact MeasurableSingletonClass.toDiscreteMeasurableSpace
-
-
-/-
-# Expected Values (Max Independent Sets) #
-Will be needed for various proofsteps
+/- THE PLAN
+    Establish useable Probability Measure (1)
+    Have function that returns probabilities of edges existing (regardless of other edges) (2)
+    Have an edgeset ↔ properties interface. (4)
+    Maybe you Lucas? I will do generalized properties of Edgesets...
+    Obtain probabilities of Properties over edgesets. (5)
+    Combine with expected values (6)
 -/
