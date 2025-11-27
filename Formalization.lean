@@ -1,4 +1,6 @@
 import Mathlib.Tactic
+import Mathlib.Combinatorics.SimpleGraph.Girth
+import Mathlib.Combinatorics.SimpleGraph.Coloring
 
 --import Formalization.Probability
 
@@ -6,7 +8,8 @@ set_option autoImplicit false
 -- set_option tactic.hygienic false
 set_option linter.style.longLine false
 
-theorem high_girth_high_chromatic_number {k : ℕ} {l : ℕ} : 2+2=4 := by
+theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
+    ∃ (n : ℕ) (G : SimpleGraph (Fin n)), G.egirth > l ∧ G.chromaticNumber > k := by
 
   --## let n := SPECIFIED LATER ℕ
   --#  let θ < 1 / l
@@ -41,11 +44,11 @@ theorem high_girth_high_chromatic_number {k : ℕ} {l : ℕ} : 2+2=4 := by
   --#  Pr[α(G) ≥ x] ≤ e^( ln(n) - p/2 * (⌈3/p * ln(n)⌉-1)      )^x / ( x! )  by:rw x
   --## Pr[α(G) ≥ x] ≤ e^0  / ( x! )                                          by:okay this step sucks, something about ⌈3/p * ln(n)⌉ > 2/p * ln(n) + 1
   --## lim n → ∞: Pr[α(G) ≥ x] → 0                                           by: ???
-  --#  ∀ ε>0, ∃ n₂, P[X ≥ n₂/2] < ε                                          by:def lim?
+  --#  ∀ ε>0, ∃ n₂, P[α(G) ≥ x(n₂)] < ε                                      by:def lim?
 
-  --#  choose n = max(n₁, n₂), ε = 0.5  ⇝  G with P[X ≥ n₁/2] + P[X ≥ n₂/2] < 0.5 + 0.5    by:apply previous two stmts
+  --#  choose n = max(n₁, n₂), ε = 0.5  ⇝  G with P[X ≥ n₁/2] + P[α(G) ≥ x(n₂)] < 0.5 + 0.5    by:apply previous two stmts
   --## let G' := "G but with n/2 nodes removed  ⇝  there are no more small cycles"
-  --## "G' has girth greater than l"                                                       by:facts and logic
+  --## "G' has girth greater than l"                                                           by:facts and logic
 
   --## α(G') ≤ α(G)                            by:facts and logic
   --#  α(G') < x                               by:choice of n
