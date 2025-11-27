@@ -1,4 +1,3 @@
-import Mathlib.Tactic
 import Mathlib.Combinatorics.SimpleGraph.Girth
 import Mathlib.Combinatorics.SimpleGraph.Coloring
 
