@@ -14,9 +14,8 @@ abbrev graph (n : ℕ) := SimpleGraph (Fin n)
 Here we setup the basic probability notion, in conjnction with Graphs, that will be needed for
 the proof.
 -/
-abbrev pr_bound (p : ℝ≥0) := 0 ≤ p ∧ p ≤ 1
 
-def Dist_Bernoulli (b : Bool)(p : ℝ≥0)(_ : pr_bound p) : ℝ≥0 := if b then p else 1 - p
+abbrev pr_bound (p : ℝ≥0) := 0 ≤ p ∧ p ≤ 1
 
 /- Probability Space Definition (General) -/
 structure PrSpace (Ω : Set α) where
@@ -25,6 +24,7 @@ structure PrSpace (Ω : Set α) where
     Pr : Ev → ℝ≥0
     -- General conditions
     Ev_c : Ev ⊆ Sa.powerset  -- ENSURES that any Event Space is a subset of the powerset
+    [ Ev_set : SetLike Ev α]
     /- CONDITIONS FOR THE EVENT SPACE -/
     -- Everything happening is a Event
     base : Sa ∈ Ev
@@ -55,7 +55,9 @@ def PrSpace_G {n : ℕ}(G : graph n)(p : ℝ≥0)(bound : p ≤ 1) : PrSpace G.e
     Sa := G.edgeSet
     Ev := G.edgeSet.powerset
     Ev_c := by rfl
+    Ev_set := by exact SetLike.instSubtypeSet
     -- Check if sound!
+    -- Hardcoded the probability of a specific set appearing
     Pr := fun A ↦ if A.val.ncard = 0 then 0
         else p^(A.val.ncard) * (1-p)^({ a ∈ G.edgeSet | a ∉ A.val }.ncard)
     base := by simp only [Set.mem_powerset_iff, subset_refl]
@@ -81,7 +83,10 @@ def PrSpace_G {n : ℕ}(G : graph n)(p : ℝ≥0)(bound : p ≤ 1) : PrSpace G.e
           · assumption
     zero := by simp only [Set.ncard_empty, ↓reduceIte]
     additive := sorry
-
+/- SANITY CHECKS -/
+example (p : ℝ≥0)(pr_bound) :
+    let W := PrSpace_G (graph n) p (by omega);
+    ∀(E1 E2 : W.Ev), E1 ⊆ E2 → W.Pr E1 ≤ W.Pr E2
 /- THE PLAN
     Establish useable Probability Measure (1)
     Have function that returns probabilities of edges existing (regardless of other edges) (2)
