@@ -49,21 +49,24 @@ noncomputable instance : IsProbabilityMeasure (E_measure p le_one G) := by
 /- This definition is equivalent to the powerset measurable space
    formalization approach, but easier to handle in Lean 4.
    Think of what each instance of Ω G (i.e. a concrete function) signifies. -/
-noncomputable def Eset_PMF : PMF (Ω G) := (E_measure p le_one G).toPMF
+noncomputable def Eset_PMF (G : FinGraph n) : PMF (Ω G) :=
+  (E_measure p le_one G).toPMF
 
 /- # General Definition of Graphs # -/
 -- Complete Graph
-def KGraph : FinGraph n where
+def KGraph (n : ℕ) : FinGraph n where
   Adj u v := u ≠ v
--- This samples a subgraph according to a function f from our sample space
-def RSubGraph (f : Ω G) : FinGraph n where
+abbrev ΩK (n : ℕ) := Ω (KGraph n)
+/- This samples a random subgraph from the complete Graph
+   according to a function f from our sample space -/
+def RGraph {n : ℕ}(f : ΩK n) : FinGraph n where
   Adj u v :=
-    G.Adj u v ∧ ((h:G.Adj u v) → f ⟨s(u, v), by rwa [SimpleGraph.mem_edgeSet]⟩)
+    u ≠ v ∧ ( (h :u ≠ v) → f ⟨ s(u, v),
+      by rw [SimpleGraph.mem_edgeSet, KGraph]; simpa only [ne_eq] ⟩ )
   symm := by {
     rintro a b ⟨h1,h2⟩
     constructor
-    · rw [←SimpleGraph.mem_edgeSet] at *
-      rwa [Sym2.eq_swap]
+    · symm; assumption
     · intros adj
       specialize h2 h1
       conv =>
@@ -71,3 +74,17 @@ def RSubGraph (f : Ω G) : FinGraph n where
         rw [Sym2.eq_swap]
       assumption
   }
+/- Wrapper for ease of access and the base graph to be sampled from
+   is fixed as the complete graph -/
+structure RGraphℙ (n : ℕ) where
+  edges : ΩK n
+  pmf : PMF (ΩK n)
+  graph : FinGraph n
+noncomputable def RKGraphℙ {n : ℕ}(f : ΩK n)(p : ℝ≥0)(le_one : p ≤ 1) : RGraphℙ n where
+  edges := f
+  graph := RGraph f
+  pmf := Eset_PMF p le_one (KGraph n)
+
+/- # Properties # -/
+/- TODO: Find out how to formalize the probability of a set of functions f : ΩK n,
+    ideally such that these fs adhere to some condition. Over the wrapper RKGraphP -/
