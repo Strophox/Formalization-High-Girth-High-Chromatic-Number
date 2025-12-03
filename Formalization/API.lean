@@ -50,7 +50,7 @@ noncomputable instance : IsProbabilityMeasure (EKμ n p le_one) := by -- is Prob
    This definition is equivalent to the powerset measurable space
    formalization approach, but easier to handle in Lean 4.
    Think of what each instance of Ω G (i.e. a concrete function) signifies. -/
-noncomputable def EKpmf (n : ℕ) : PMF (ΩK n) :=
+noncomputable def EKpmf : PMF (ΩK n) :=
   (EKμ n p le_one).toPMF
 
 /- # Graphs # -/
@@ -84,7 +84,8 @@ noncomputable def num_cyc_eq (G : Fingraph n)(l : ℕ) : ℕ :=
       { p | p.2.IsCycle ∧ p.2.length = l};
     (cycles_l.ncard) / l
 /- Get number of cycles less or equal than l-/
-noncomputable def num_cyc_le (G : Fingraph n)(l : ℕ) : ℕ :=
+noncomputable def num_cyc_le (f : ΩK n)(l : ℕ) : ℕ :=
+  let G := RGraph n f;
   ∑(i ∈ Finset.range l), num_cyc_eq n G i
 
   /- # Maximal Independent Set α(G) # -/
@@ -106,5 +107,14 @@ def αG (f : ΩK n) :=
 
 /- # Probability 2 # -/
   /- # Expected Value # -/
--- TODO @LUCAS Try to define expected Value using num_cyc_le if you want.
-    -- Notice: might be too hard for you or not IDK
+/- Probability of number of cycles ≤ l being bigger equal num -/
+noncomputable def ℙcyc_l_ge (num : ℕ)(l : ℕ) : ℝ≥0∞ :=
+  let meas := EKμ n p le_one;
+  meas {f : (ΩK n) | num_cyc_le n f l ≥ num}
+/- Some theorems about that -/
+-- @Lucas maybe
+/- The expected number of cycles ≤ l -/
+noncomputable def 𝔼cyc_l (l : ℕ): ℝ≥0∞ :=
+  ∑(f : ΩK n), (num_cyc_le n f l) * ((EKpmf n p le_one) f)
+/- Some theorems about that -/
+-- @Lucas maybe
