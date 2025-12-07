@@ -147,7 +147,7 @@ theorem Pr_e (p : ℝ≥0)(le_one : p ≤ 1):
   -- I dont get this
   let s : EK n → Set Bool := fun e' : EK n => if e' = e then {true} else Set.univ
   -- Proof that universe of above functions is equal to the event that edge e is in random graph
-  -- ??? Lucas maybe you can understand this (mostly copied from prof)
+  -- I will try to understand it better. The have : ... below is mostly copied from prof
   have set_eq : { (f : ΩK n) | f e = true} = Set.univ.pi s := by {
     ext f
     constructor
@@ -180,6 +180,7 @@ theorem Pr_e (p : ℝ≥0)(le_one : p ≤ 1):
   -- Solve Equations involving numbers to get the desired result.
   rw [show ((p : ℝ≥0∞) + (1 - p)) = 1 from by
     rw [add_tsub_cancel_of_le]; exact ENNReal.coe_le_one_iff.mpr le_one]
+  -- conv is ADVANCED REWRITING technique
   conv =>
     enter [1,1,2]
     rw [show ({x | x = e} : Finset _).card = 1 from by
@@ -189,7 +190,6 @@ theorem Pr_e (p : ℝ≥0)(le_one : p ≤ 1):
       obtain ⟨val, property⟩ := e
       ext a : 1
       simp_all only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]]
-  have npow : ∀n, (1 : ℝ) ^ n = 1 := by exact fun n ↦ one_pow n
   conv =>
     enter [1,2]
     simp only [ENNReal.toReal_one, one_pow]
