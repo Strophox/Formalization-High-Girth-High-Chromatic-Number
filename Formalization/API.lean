@@ -136,6 +136,65 @@ noncomputable def αG (f : ΩK n)(pre : n > 0) : ℕ :=
 
 
 /- # 3. Probability-2 # -/
+/- Probability of a single edge existing is p-/
+theorem Pr_e (p : ℝ≥0)(le_one : p ≤ 1):
+  let meas := EKμ n p le_one;
+  ∀(e : EK n), meas.real {f | f e} = p := by
+  intro M e
+  -- "Unfold" Measure Theory stuff
+  rw [Measure.real_def]
+  simp only [EKμ, μ_bernoulli, M]
+  -- I dont get this
+  let s : EK n → Set Bool := fun e' : EK n => if e' = e then {true} else Set.univ
+  -- Proof that universe of above functions is equal to the event that edge e is in random graph
+  -- ??? Lucas maybe you can understand this (mostly copied from prof)
+  have set_eq : { (f : ΩK n) | f e = true} = Set.univ.pi s := by {
+    ext f
+    constructor
+    · intro h
+      simp_all only [Set.mem_setOf_eq, Bool.univ_eq, Set.mem_pi, Set.mem_univ,
+        forall_const, Subtype.forall, s]
+      intro a b
+      obtain ⟨val, property⟩ := e
+      simp_all only [Subtype.mk.injEq]
+      split
+      next h_1 =>
+        subst h_1
+        simp_all only [Set.mem_singleton_iff]
+      next h_1 => simp_all only [Set.mem_insert_iff, Set.mem_singleton_iff,
+        Bool.eq_false_or_eq_true_self]
+    · intro h
+      simp only [Set.mem_setOf_eq]
+      have := h e (Set.mem_univ _)
+      simpa [s]
+  }
+  -- Rewrite/Simping to get numbers so that we get to see a normal definition with NUMBERS!!
+  rw [set_eq]; rw [@Measure.pi_pi]; rw [@Finset.prod_apply_ite]
+  -- SIMP did something
+  simp only [PMF.toMeasure_apply_fintype, Fintype.univ_bool, Finset.mem_singleton,
+    Bool.true_eq_false, not_false_eq_true, Finset.sum_insert, Set.mem_singleton_iff,
+    Set.indicator_of_mem, PMF.bernoulli_apply, cond_true, Finset.sum_singleton, Bool.false_eq_true,
+    Set.indicator_of_notMem, add_zero, Finset.prod_const, Bool.univ_eq, Set.mem_insert_iff,
+    Bool.eq_false_or_eq_true_self, cond_false, ENNReal.coe_sub, ENNReal.coe_one, ENNReal.toReal_mul,
+    ENNReal.toReal_pow, ENNReal.coe_toReal]
+  -- Solve Equations involving numbers to get the desired result.
+  rw [show ((p : ℝ≥0∞) + (1 - p)) = 1 from by
+    rw [add_tsub_cancel_of_le]; exact ENNReal.coe_le_one_iff.mpr le_one]
+  conv =>
+    enter [1,1,2]
+    rw [show ({x | x = e} : Finset _).card = 1 from by
+      rw [@Finset.card_eq_one]; use e
+      -- AESOP did something
+      simp_all only [Bool.univ_eq, s]
+      obtain ⟨val, property⟩ := e
+      ext a : 1
+      simp_all only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]]
+  have npow : ∀n, (1 : ℝ) ^ n = 1 := by exact fun n ↦ one_pow n
+  conv =>
+    enter [1,2]
+    simp only [ENNReal.toReal_one, one_pow]
+  norm_cast; norm_num
+
 
 /- # 3.1 ℙ Cycles # -/
 /- Probability of number of cycles ≤ l being bigger equal num -/
