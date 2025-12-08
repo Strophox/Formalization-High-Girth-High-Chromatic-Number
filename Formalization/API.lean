@@ -110,7 +110,8 @@ noncomputable def αG (f : ΩK n)(pre : n > 0) : ℕ :=
   let f (I : PVK n) : ℕ := I.ncard; -- function mapping the independent sets to their cardinalities
   let ICard : Set ℕ := f '' IndSets; -- set containing all the cardinalities
   let : Fintype ICard := by exact Fintype.ofFinite ↑ICard -- Tell Lean ICard can be a finite type
-  have h : ICard.toFinset.Nonempty := by { -- show ICard
+
+  have h : ICard.toFinset.Nonempty := by { -- show that ICard nonempty
     refine Set.Aesop.toFinset_nonempty_of_nonempty ?_
     have h : IndSets.Nonempty → ICard.Nonempty := by
       exact fun a ↦ Set.Nonempty.image f a
@@ -119,6 +120,7 @@ noncomputable def αG (f : ΩK n)(pre : n > 0) : ℕ :=
       have : Nonempty (VK n) := VK_nonempty n pre
       exact Set.exists_mem_of_nonempty (VK n)
     }; have v : VK n := Classical.choose prop -- Choose a vertex | need to prove choose_spec?
+
     rw [@Set.nonempty_def];unfold IndSets; use {v}
     simp only
       [Subtype.forall, ne_eq,
@@ -136,10 +138,13 @@ noncomputable def αG (f : ΩK n)(pre : n > 0) : ℕ :=
 
 
 /- # 3. Probability-2 # -/
-/- Probability of a single edge existing is p-/
-theorem Pr_e (p : ℝ≥0)(le_one : p ≤ 1):
-  let meas := EKμ n p le_one;
-  ∀(e : EK n), meas.real {f | f e} = p := by
+
+/- # 3.0 Base # -/
+/- Probability of an edge existing is p
+   Pr[e exists in G] = p -/
+theorem ℙe (p : ℝ≥0)(le_one : p ≤ 1):
+let meas := EKμ n p le_one;
+∀(e : EK n), meas.real {f | f e} = p := by
   intro M e
   -- "Unfold" Measure Theory stuff
   rw [Measure.real_def]
@@ -194,7 +199,57 @@ theorem Pr_e (p : ℝ≥0)(le_one : p ≤ 1):
     enter [1,2]
     simp only [ENNReal.toReal_one, one_pow]
   norm_cast; norm_num
+/- Probability of a set of edges E existing is p^|E|
+   Pr[E is contained in G] = p^|E| -/
+abbrev E_isContained (E : Set (EK n))(f : ΩK n) := ∀(e : E), f e
+theorem ℙE (p : ℝ≥0)(le_one : p ≤ 1):
+let meas := EKμ n p le_one;
+∀(E : Set (EK n)), meas.real {f | E_isContained n E f} = p^(E.ncard) := by
+  intro M E
+  rw [Measure.real_def]
+  simp only [EKμ, μ_bernoulli, M]
 
+  let (e : EK n): Decidable (e ∈ E) := by exact Classical.propDecidable (e ∈ E)
+  let s : EK n → Set Bool := fun e' : EK n => if e' ∈ E then {true} else Set.univ
+
+  have set_eq : {f | E_isContained n E f} = Set.univ.pi s := by {
+    ext f
+    constructor
+    · -- AESOP did a thing
+      intro a
+      simp_all only [Subtype.forall, Set.mem_setOf_eq,
+        Bool.univ_eq, Set.mem_pi, Set.mem_univ, forall_const, s]
+      intro a_1 b
+      split
+      next h => simp_all only [Set.mem_singleton_iff]
+      next h => simp_all only [Set.mem_insert_iff, Set.mem_singleton_iff,
+        Bool.eq_false_or_eq_true_self]
+    · intro h
+      simp only [Set.mem_setOf_eq, E_isContained]
+      intro e
+      have := h e (Set.mem_univ _)
+      simpa [s]
+  }
+
+  rw [set_eq]; rw [@Measure.pi_pi]; rw [@Finset.prod_apply_ite]
+  simp only [PMF.toMeasure_apply_fintype, Fintype.univ_bool, Finset.mem_singleton,
+    Bool.true_eq_false, not_false_eq_true, Finset.sum_insert, Set.mem_singleton_iff,
+    Set.indicator_of_mem, PMF.bernoulli_apply, cond_true, Finset.sum_singleton, Bool.false_eq_true,
+    Set.indicator_of_notMem, add_zero, Finset.prod_const, Bool.univ_eq, Set.mem_insert_iff,
+    Bool.eq_false_or_eq_true_self, cond_false, ENNReal.coe_sub, ENNReal.coe_one, ENNReal.toReal_mul,
+    ENNReal.toReal_pow, ENNReal.coe_toReal]
+  rw [show ((p : ℝ≥0∞) + (1 - p)) = 1 from by
+    rw [add_tsub_cancel_of_le]; exact ENNReal.coe_le_one_iff.mpr le_one]
+  conv =>
+    enter [1,2]
+    simp only [ENNReal.toReal_one, one_pow]
+  norm_cast; norm_num
+  conv =>
+    enter [1, 2, 1]
+    rw [show ({x | x ∈ E} : Finset (EK n)) = E.toFinset from by
+      exact Set.filter_mem_univ_eq_toFinset E]
+  congr
+  exact Eq.symm (Set.ncard_eq_toFinset_card' E)
 
 /- # 3.1 ℙ Cycles # -/
 /- Probability of number of cycles ≤ l being bigger equal num -/
