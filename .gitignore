@@ -1,5 +1,9 @@
 .lake/
 
+# A priori, we do not want to share anything from the Playground.
 Playground/*
-!Playground/Playground.lean
+
+# Explicitly share the following.
 !Playground/Notes_Playground.md
+!Playground/Playground.lean
+!Playground/Playground2.lean
