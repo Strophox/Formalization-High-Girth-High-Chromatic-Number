@@ -6,58 +6,79 @@ set_option autoImplicit false
 set_option linter.style.commandStart false
 
 variable {α : Type*}
-variable (n : ℕ){_ : n > 0}
-variable (p : ℝ≥0)(le_one: p ≤ 1)
 
 /- # 1 Basics # -/
-/- We will sample from the complete Graph on n nodes-/
-def Fingraph := SimpleGraph (Fin n)
-def KGraph : Fingraph n := SimpleGraph.completeGraph (Fin n)
+/- Our probability values -/
+structure ℙval where
+  val   : ℝ≥0
+  proof : val ≤ 1
+structure Nval where
+  val   : ℕ
+  proof : val > 0
 
-abbrev VK := Fin n -- Vertex Set
-instance VK_nonempty (h : n > 0) : Nonempty (VK n) := by
-  exact Fin.pos_iff_nonempty.mp h
-abbrev PVK := Set (Fin n) -- Vertex Powerset
+section
+variable (p : ℙval)
+variable (n : Nval)
+
+/- Graph types and Graph constants -/
+abbrev Fingraph := SimpleGraph (Fin n.1) -- Our graph type
+abbrev KGraph : Fingraph n := SimpleGraph.completeGraph (Fin n.1) -- A complete Graph
+
+/- Vertex Set -/
+abbrev VK := Fin n.1
+-- Properties :
+instance VK_nonempty : Nonempty (VK n) := by
+  exact Fin.pos_iff_nonempty.mp n.2
+
+/- Vertex Power Set -/
+abbrev PVK := Set (Fin n.1)
 noncomputable instance : Fintype (PVK n) := by
   exact Fintype.ofFinite ↑(PVK n)
+-- Properties :
 instance PVK_nonempty : Nonempty (PVK n) := by
   exact instNonemptyOfInhabited
 
-/- Initialize the edgeset we will be using -/
+/- Complete EdgeSet -/
 abbrev EK := (KGraph n).edgeSet
+-- Properties :
 noncomputable instance : Fintype (EK n) := by
   exact Fintype.ofFinite ↑(EK n)
+
+/- Complete EdgePowerSet -/
 abbrev PEK := Set (EK n)
+-- Properties :
 noncomputable instance : Fintype (PEK n) := by
   exact Set.fintype
 
 /- # Probability 1 # -/
-/- Create our sample space ΩK which is a finite dependent type -/
-abbrev ΩK := (KGraph n).edgeSet → Bool
-noncomputable instance : Fintype (ΩK n) := by -- is finite type
+/- Graph Sample Space ⇒
+The universe of functions Edges -> Bool -/
+abbrev ΩK := (EK n) → Bool
+-- Properties :
+noncomputable instance : Fintype (ΩK n) := by
   exact Pi.instFintype
-instance : DiscreteMeasurableSpace (ΩK n) := by -- is DiscreteMeasurableSpace
+instance : DiscreteMeasurableSpace (ΩK n) := by
   exact MeasurableSingletonClass.toDiscreteMeasurableSpace
 
-/- Get a bernoulli measure ⇒
-Create a bernoulli PMF, then convert that to a Measure -/
+/- Bernoulli Measure ⇒
+Cast from a bernoulli PMF -/
 noncomputable def μ_bernoulli : Measure Bool :=
-  (PMF.bernoulli p le_one).toMeasure
+  (PMF.bernoulli p.1 p.2).toMeasure
   deriving IsProbabilityMeasure
 /- Defines a Measure over sample space ΩK by taking the product
    of the bernoulli measures over all edges.
    By hovering over #check, you see its type signature. -/
 noncomputable abbrev EKμ : Measure (ΩK n) :=
-  Measure.pi fun (_ : EK n) ↦ (μ_bernoulli p le_one)
-noncomputable instance EKμIsProbMeas : IsProbabilityMeasure (EKμ n p le_one) := by
-  exact Measure.pi.instIsProbabilityMeasure fun _ ↦ μ_bernoulli p le_one
+  Measure.pi fun (_ : EK n) ↦ (μ_bernoulli p)
+noncomputable instance EKμIsProbMeas : IsProbabilityMeasure (EKμ p n) := by
+  exact Measure.pi.instIsProbabilityMeasure fun _ ↦ μ_bernoulli p
 #check EKμ
 /- Define a PMF over ΩK
    This definition is equivalent to the powerset measurable space
    formalization approach, but easier to handle in Lean 4.
    Think of what each instance of Ω G (i.e. a concrete function) signifies. -/
 noncomputable def EKpmf : PMF (ΩK n) :=
-  (EKμ n p le_one).toPMF
+  (EKμ p n).toPMF
 
 /- # 1.1 Graphs # -/
 /- Define a random subgraph sampled from KGraph n
@@ -84,7 +105,9 @@ noncomputable instance (f : ΩK n): let G := (RGraph n f); G.LocallyFinite := by
   exact Fintype.ofFinite ↑(SimpleGraph.neighborSet (RGraph n f) v)
 }
 
+
 /- # 2 Properties # -/
+
 /- # 2.1 Number of cycles of length ≤ l # -/
 /- E is Cycleset containing cycles with length ≤ l -/
 abbrev isCycleset (E : PEK n)(f : ΩK n)(l : ℕ) :=
@@ -110,7 +133,7 @@ abbrev isK (G : Fingraph n)(I : PVK n) :=
 /- Get α(G)
 NOTE : Changed to circumvent difficult classical.choose existence proof
 NOTE : Lost access to explicit max independent set -/
-noncomputable def αG (f : ΩK n)(pre : n > 0) : ℕ :=
+noncomputable def αG (f : ΩK n) : ℕ :=
   let G := RGraph n (f_complement n f);
   let IndSets := { I : PVK n | isK n G I };
   let f (I : PVK n) : ℕ := I.ncard; -- function mapping the independent sets to their cardinalities
@@ -118,23 +141,27 @@ noncomputable def αG (f : ΩK n)(pre : n > 0) : ℕ :=
   let : Fintype ICard := by exact Fintype.ofFinite ↑ICard -- Tell Lean ICard can be a finite type
 
   have h : ICard.toFinset.Nonempty := by { -- show that ICard nonempty
+
     refine Set.Aesop.toFinset_nonempty_of_nonempty ?_
     have h : IndSets.Nonempty → ICard.Nonempty := by
       exact fun a ↦ Set.Nonempty.image f a
     apply h; clear h
-    let prop : ∃v, v ∈ (Set.univ : Set (VK n)) := by {
-      have : Nonempty (VK n) := VK_nonempty n pre
-      exact Set.exists_mem_of_nonempty (VK n)
-    }; have v : VK n := Classical.choose prop -- Choose a vertex | need to prove choose_spec?
 
-    rw [@Set.nonempty_def];unfold IndSets; use {v}
+    let prop : ∃v, v ∈ (Set.univ : Set (VK n)) := by {
+      have : Nonempty (VK n) := VK_nonempty n
+      exact Set.exists_mem_of_nonempty (VK n)
+    }; have v : VK n := Classical.choose prop
+    -- chosen a vertex | need to prove choose_spec?
+
+    rw [@Set.nonempty_def]; unfold IndSets; use {v}
     simp only
       [Subtype.forall, ne_eq,
       Subtype.mk.injEq, Set.mem_setOf_eq, Set.mem_singleton_iff,
       forall_eq, not_true_eq_false,
       SimpleGraph.irrefl, imp_self]
   }
-  ICard.toFinset.max' h -- GET THE ACTUAL NUMBER
+
+  ICard.toFinset.max' h -- get number
 
 /- # 2.3 Chromatic Number χ(G) # -/
 /- Get minimal coloring of graph i.e. χ(G) -/
@@ -149,9 +176,8 @@ noncomputable def αG (f : ΩK n)(pre : n > 0) : ℕ :=
 /- # 3.0 Base # -/
 /- Probability of an edge existing is p
    Pr[e exists in G] = p -/
-theorem ℙe (p : ℝ≥0)(le_one : p ≤ 1):
-let meas := EKμ n p le_one;
-∀(e : EK n), meas.real {f | f e} = p := by
+theorem ℙe : let meas := EKμ p n;
+∀(e : EK n), meas.real {f | f e} = p.1 := by
   intro M e
   -- "Unfold" Measure Theory stuff
   rw [Measure.real_def]
@@ -190,8 +216,9 @@ let meas := EKμ n p le_one;
     Bool.eq_false_or_eq_true_self, cond_false, ENNReal.coe_sub, ENNReal.coe_one, ENNReal.toReal_mul,
     ENNReal.toReal_pow, ENNReal.coe_toReal]
   -- Solve Equations involving numbers to get the desired result.
-  rw [show ((p : ℝ≥0∞) + (1 - p)) = 1 from by
-    rw [add_tsub_cancel_of_le]; exact ENNReal.coe_le_one_iff.mpr le_one]
+  rw [show ((p.val : ℝ≥0∞) + (1 - p.val)) = 1 from by
+    rw [add_tsub_cancel_of_le]
+    exact ENNReal.coe_le_one_iff.mpr p.2]
   -- conv is ADVANCED REWRITING technique
   conv =>
     enter [1,1,2]
@@ -202,6 +229,7 @@ let meas := EKμ n p le_one;
       obtain ⟨val, property⟩ := e
       ext a : 1
       simp_all only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_singleton]]
+      -- AESOP won
   conv =>
     enter [1,2]
     simp only [ENNReal.toReal_one, one_pow]
@@ -210,10 +238,10 @@ let meas := EKμ n p le_one;
 /- # 3.1 ℙ/𝔼 Cycles # -/
 /- Probability of #cycles with length ≤ l = X -/
 noncomputable def ℙcycle (l : ℕ)(X : ℕ) :=
-  (EKμ n p le_one) (cycSet_le n l X)
+  (EKμ p n) (cycSet_le n l X)
 /- Expected Value 𝔼[X] of #cycles with length ≤ l -/
 noncomputable def 𝔼cycle (l : ℕ) :=
-  ∑(i ∈ Finset.range n), i * (ℙcycle n p le_one l i)
+  ∑(i ∈ Finset.range n.1), i * (ℙcycle p n l i)
 
 /- # 3.2 ℙ Independent Sets / α(G) # -/
 /- Probability of α(G) being bigger equal num -/
@@ -222,9 +250,4 @@ noncomputable def ℙαG_ge (num : ℕ)(pre : n > 0) : ℝ≥0∞ :=
   meas {f : (ΩK n) | αG n f pre ≥ num}
 /- Some theorems about that -/
 -- @Lucas maybe
-
-/- # 3.3 𝔼 Cycles # -/
-/- The expected number of cycles ≤ l -/
-/- # 3.3.1 𝔼 Cycles Theorems # -/
-/- Some theorems about that -/
--- @Lucas maybe
+end
