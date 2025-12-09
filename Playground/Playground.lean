@@ -1,16 +1,30 @@
 --import Mathlib -- The Kitchen sink.
-import Mathlib.Tactic.Common
+-- import Mathlib.Tactic.Common
 import Mathlib.Combinatorics.SimpleGraph.Basic
 --import Mathlib.Combinatorics.SimpleGraph.Girth
 --import Mathlib.Combinatorics.SimpleGraph.Coloring
---import Mathlib.MeasureTheory.MeasurableSpace.Defs
-import Mathlib.Probability.ProbabilityMassFunction.Constructions
+import Mathlib.MeasureTheory.MeasurableSpace.Defs
+-- import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import Mathlib.MeasureTheory.Measure.MeasureSpaceDef
+import Mathlib.MeasureTheory.Measure.MeasureSpace
+
+-- import Mathlib.MeasureTheory.Integral.Bochner
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Bochner.L1
+import Mathlib.MeasureTheory.Integral.Bochner.VitaliCaratheodory
+
 --import Mathlib.MeasureTheory.MeasurableSpace.Basic
 --import Mathlib.Data.ENNReal.Basic -- ℝ≥0∞
 import Mathlib.Data.NNReal.Basic -- ℝ≥0
 import Init.Notation -- For ℝ≥0 ?...
-import ImportGraph.Meta -- #min_imports
+import Mathlib.Util.Notation3
+-- import ImportGraph.Meta -- #min_imports
+import Mathlib.Tactic.MinImports
+
+--open SimpleGraph
+open MeasureTheory
+--open MeasureTheory ProbabilityTheory
+--open scoped ENNReal
 
 /-
 log: leanprover/lean4:v4.25.0-rc2
@@ -20,7 +34,6 @@ set_option linter.style.longLine false -- Disable warning on lines exceeding 100
 set_option autoImplicit false -- NOTE: Idk what this actually does.
 --set_option tactic.hygienic false -- NOTE: Idk what this actually does. Some linter stuff I guess.
 set_option linter.style.lambdaSyntax false -- Allow using "λx ↦ ..." instead of "fun x ↦ ..."
-
 
 
 /- # hello, world
@@ -33,16 +46,99 @@ example : 1 + 2 = 3 := by rfl
 ---------------------------------------------------------------------------------------------------/
 
 
+/- # hello, world
+Further information / sources:
+* —
+---------------------------------------------------------------------------------------------------/
+
+/-
+```lean
+theorem MeasureTheory.meas_ge_le_lintegral_div
+  {G(n,p) : Type u_1}  -- G(n,p) graphs type ?
+  [MeasurableSpace G(n,p)]
+  {# : Measure G(n,p)}  -- "#" Measure = count/number of elements(=graphs) divided by total elements(=graps) ?
+  {X : G(n,p) → ENNReal}
+  (hf : AEMeasurable X #)
+  {"n/2" : ENNReal}
+  (hε : n/2 ≠ 0)
+  (hε' : n/2 ≠ ⊤) :
+    # {g : G(n,p) | X g ≥ n/2 } ≤ (∫⁻ (g : G(n,p)), f g ∂#) / (n/2)
+```
+
+So we specifically see that we need:
+* `G(n,p)` to be a `MeasureableSpace`,
+* a counting measure(?) `# : Measure G(n,p)`,
+* that `AEMeasurable X #`.
+-/
+--#check ℝ
+structure /-𝔊-/G (n : ℕ) (p : ENNReal) where
+  nodes : ℕ := n
+  edge_prob : ENNReal := p
+  hp : p ≤ 1
+  graph : SimpleGraph (Fin n)
+
+#check G
+abbrev SpecificG := G 2 0.5
+#check SpecificG
+
+-- example : (0.5 : ℝ) ≤ 1 := by norm_num
+
+-- example : (0.5 : ENNReal) ≤ 1 := by
+--   refine (ENNReal.toReal_le_toReal ?_ ?_).mp ?_
+--   · trivial
+--   · trivial
+--   · norm_num
+--     simp [ENNReal.toReal]
+    --apply?
+    -- sorry
+  -- apply ENNReal.coe_le_coe.2
+  -- simp
+
+  -- refine (ENNReal.toNNReal_le_toNNReal ?_ ?_).mp ?_
+  -- · exact Ne.symm (not_eq_of_beq_eq_false rfl)
+  -- · exact Ne.symm (not_eq_of_beq_eq_false rfl)
+  -- · apply?
+  --   sorry
+
+example : SpecificG where
+  hp := by sorry
+  graph := sorry
+-- example g : G 5 0.5 where
+--   hp := by sorry
+--   graph := sorry
+
+variable (n : ℕ) (p : ENNReal) (hp : p ≤ 1)
+
+-- #min_imports in MeasurableSpace
+
+instance G.instMeasurableSpace : MeasurableSpace (G n p) := ⊤
+
+theorem /-MeasureTheory.-/meas_ge_le_lintegral_div
+  -- {G n p : Type}  -- G(n,p) graphs type ?
+  -- [MeasurableSpace (G n p)]
+  {μ : Measure (G n p)}  -- "#" Measure = count/number of elements(=graphs) divided by total elements(=graps) ?
+  {X : G n p → ENNReal}
+  (hf : AEMeasurable X μ)
+  -- {"n/2" : ENNReal}
+  {m : ENNReal}
+  (hε : m ≠ 0)
+  (hε' : m ≠ ⊤) :
+    μ {g : (G n p) | X g ≥ m/2 } ≤ (∫⁻ (g : G n p), X g ∂μ) / (m/2) := by
+  apply MeasureTheory.meas_ge_le_lintegral_div
+  · assumption
+  · refine ENNReal.div_ne_zero.mpr ?_
+    constructor
+    · assumption
+    · trivial
+  · refine ENNReal.div_ne_top hε' ?_
+    norm_num
+
+---------------------------------------------------------------------------------------------------/
 
 /- # Measure stuff experiment 01
 Further information / sources:
 * slop provided by Google's slop machine
 ---------------------------------------------------------------------------------------------------/
-
---open SimpleGraph
-open MeasureTheory
---open MeasureTheory ProbabilityTheory
---open scoped ENNReal
 
 -- The type of possible edges {i,j} with i < j
 abbrev Edges (n : ℕ) := { e : Fin n × Fin n // e.1 < e.2 }
@@ -83,7 +179,6 @@ def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
   -- Finset.univ.map Finset (Fin n × Fin n).univ
  -- { (graph_from s) : SimpleGraph (Fin n) | s ∈ Set (Fin n × Fin n).univ}
 
-
 /-theorem MeasureTheory.meas_ge_le_lintegral_div
   {α : Type u_1}
   [MeasurableSpace α]
@@ -96,8 +191,6 @@ def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
     μ {x : α | ε ≤ f x} ≤ (∫⁻ (a : α), f a ∂μ) / ε
 -/
 
----------------------------------------------------------------------------------------------------/
-
 -- Why do we not get information about the following?...
 #min_imports in Measure
 #min_imports in MeasureSpace
@@ -106,6 +199,7 @@ def GnpGraph (n : ℕ) : (Edge n → Bool) → SimpleGraph (Fin n)
 #min_imports in IsProbabilityMeasure
 #min_imports in MeasureTheory
 --ProbabilityTheory
+---------------------------------------------------------------------------------------------------/
 
 
 /- # 'Probability theory in Lean 4 using measure theory'
@@ -127,7 +221,6 @@ example (P : Measure ℝ) (s : Set ℝ) : ℝ≥0∞ := P s
 -- Random variable.
 variable {Ω : Type*} [MeasurableSpace Ω] {X : Ω → ℝ} (hX : Measurable X)
 ---------------------------------------------------------------------------------------------------/
-
 
 
 /- # 'WuS script (Martin Schweizer) examples using measure'
@@ -161,7 +254,6 @@ def
 
 example : ℙ[mindestens einmal 1] = 3/4
 -------------------------------------------------------------------------------/
-
 
 
 /- # 'Discrete probability stuff without measure'

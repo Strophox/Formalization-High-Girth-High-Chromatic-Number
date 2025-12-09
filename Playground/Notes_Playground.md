@@ -165,7 +165,7 @@ theorem MeasureTheory.meas_ge_le_lintegral_div
   {"n/2" : ENNReal}
   (hε : n/2 ≠ 0)
   (hε' : n/2 ≠ ⊤) :
-    # {g : G(n,p) | X g ≥ n/2 } ≤ (∫⁻ (g : G(n,p)), f g ∂#) / (n/2)
+    # {g : G(n,p) | X g ≥ n/2 } ≤ (∫⁻ (g : G(n,p)), X g ∂#) / (n/2)
 ```
 
 So we specifically see that we need:
