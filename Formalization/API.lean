@@ -47,7 +47,7 @@ noncomputable def μ_bernoulli : Measure Bool :=
 /- Defines a Measure over sample space ΩK by taking the product
    of the bernoulli measures over all edges.
    By hovering over #check, you see its type signature. -/
-noncomputable abbrev EKμ :=
+noncomputable abbrev EKμ : Measure (ΩK n) :=
   Measure.pi fun (_ : EK n) ↦ (μ_bernoulli p le_one)
 noncomputable instance EKμIsProbMeas : IsProbabilityMeasure (EKμ n p le_one) := by
   exact Measure.pi.instIsProbabilityMeasure fun _ ↦ μ_bernoulli p le_one
@@ -58,40 +58,6 @@ noncomputable instance EKμIsProbMeas : IsProbabilityMeasure (EKμ n p le_one) :
    Think of what each instance of Ω G (i.e. a concrete function) signifies. -/
 noncomputable def EKpmf : PMF (ΩK n) :=
   (EKμ n p le_one).toPMF
-
-/- # Probability 2 : Higher Order # -/
-/- Create Higher Order Sample Space ΩK2 n of functions that maps "GRAPHS" to Bool -/
-abbrev ΩK2 := (ΩK n) → Bool -- Type signature
-noncomputable instance : Fintype (ΩK2 n) := by -- Is Fintype
-  exact Pi.instFintype
-instance : DiscreteMeasurableSpace (ΩK2 n) := by -- Is DiscreteMeasureSpace
-  exact MeasurableSingletonClass.toDiscreteMeasurableSpace
-/- Our base measure that maps a Graph to a probability -/
-noncomputable def μB (f : ΩK n) : Measure Bool :=
-  let p' := (EKpmf n p le_one f).toNNReal;
-  have h : p' ≤ 1 := by {
-    subst p'
-    simp only [EKpmf]
-    grw [PMF.coe_le_one]
-    · simp only [ENNReal.toNNReal_one, le_refl]
-    · simp only [ne_eq, ENNReal.one_ne_top, not_false_eq_true]
-  }
-  (PMF.bernoulli p' (h)).toMeasure
-/- Using μB we define a measure over ΩK2 n-/
-noncomputable abbrev ΩKμ : Measure (ΩK2 n) :=
-  Measure.pi fun (f : ΩK n) ↦ (μB n p le_one f)
-noncomputable instance : IsProbabilityMeasure (ΩKμ n p le_one) := by
-  unfold ΩKμ
-  have t : ∀ (i : ΩK n), IsProbabilityMeasure ((fun f ↦ μB n p le_one f) i) := by {
-    intro f
-    simp_all only [μB]
-    infer_instance
-  }
-  exact Measure.pi.instIsProbabilityMeasure fun f ↦ μB n p le_one f
-#check ΩKμ
-/- FInally have a PMF over ΩK2 n -/
-noncomputable def ΩKpmf : PMF (ΩK2 n) :=
-  ((ΩKμ n p le_one) : Measure (ΩK2 n)).toPMF
 
 /- # 1.1 Graphs # -/
 /- Define a random subgraph sampled from KGraph n
@@ -111,36 +77,27 @@ def RGraph (f : ΩK n) : Fingraph n where
         rw [Sym2.eq_swap]
       assumption
   }
-  noncomputable instance (f : ΩK n): let G := (RGraph n f); G.LocallyFinite := by {
-    simp only
-    intro v
-    exact Fintype.ofFinite ↑(SimpleGraph.neighborSet (RGraph n f) v)
-  }
+
+noncomputable instance (f : ΩK n): let G := (RGraph n f); G.LocallyFinite := by {
+  simp only
+  intro v
+  exact Fintype.ofFinite ↑(SimpleGraph.neighborSet (RGraph n f) v)
+}
 
 /- # 2 Properties # -/
 /- # 2.1 Number of cycles of length ≤ l # -/
 /- E is Cycleset containing cycles with length ≤ l -/
-abbrev isCycleset_leL (E : PEK n)(f : ΩK n)(l : ℕ) :=
+abbrev isCycleset (E : PEK n)(f : ΩK n)(l : ℕ) :=
   let G := RGraph n f;
   E.ncard ≤ l ∧ ∃(v : VK n)(p : G.Walk v v), p.IsCycle ∧ {e | e ∈ p.edges} = E
-/- The set of all cycles with length ≤ l in a graph -/
-abbrev cycL_set (f : ΩK n)(l : ℕ) :=
-  {Cyc | isCycleset_leL n Cyc f l}
-/- The set of Graphs that cointain exactly X cycles of length ≤ l -/
-noncomputable def F_cyc_leL (l : ℕ)(X : ℕ) : ΩK2 n :=
-  -- Proof something is decideable
-  let (f : ΩK n): Decidable ( ∀(E : PEK n)(e : EK n),
-    let CYC := (cycL_set n f l); CYC.ncard = X ∧ E ∈ CYC ∧ e ∈ E ∧ f e = true) := by
-    exact Classical.propDecidable _
-  -- The Function to be returned
-  let F : ΩK2 n := fun f ↦ if
-    ∀(E : PEK n)(e : EK n),
-    let CYC := (cycL_set n f l); CYC.ncard = X ∧ E ∈ CYC ∧ e ∈ E ∧ f e = true
-    then true else false;
-  F
-
-
-
+/- Helpers that might be useful later -/
+noncomputable abbrev CycleSetCard (f : ΩK n)(l : ℕ) :=
+  {Cyc | isCycleset n Cyc f l}.ncard
+noncomputable abbrev CycleSetRed (f : ΩK n)(l : ℕ): PEK n :=
+  ⋃₀{Cyc | isCycleset n Cyc f l}
+/- The set of Graphs that contain exactly X cycles of length ≤ l -/
+def cycSet_le (l : ℕ)(X : ℕ) : Set (ΩK n) :=
+  {f | CycleSetCard n f l = X }
 
 /- # 2.2 Maximal Independent Set α(G) # -/
 
@@ -249,73 +206,14 @@ let meas := EKμ n p le_one;
     enter [1,2]
     simp only [ENNReal.toReal_one, one_pow]
   norm_cast; norm_num
-/- Probability of a set of edges E existing is p^|E|
-   Pr[E is contained in G] = p^|E| -/
--- def E_isContained (E : Set (EK n))(f : ΩK n) := ∀(e : E), f e
--- theorem ℙE (p : ℝ≥0)(le_one : p ≤ 1):
--- let meas := EKμ n p le_one;
--- ∀(E : Set ↑(EK n)), meas.real { (f : ΩK n) | E_isContained n E f} = p^(E.ncard) := by
---   intro M E
---   rw [Measure.real_def]
---   simp only [EKμ, μ_bernoulli, M]
-
---   -- Setup this s type which will be useful later.
---   -- Must prove decideability first...
---   let (e : EK n): Decidable (e ∈ E) := by exact Classical.propDecidable (e ∈ E)
---   let s : EK n → Set Bool := fun e' : EK n => if e' ∈ E then {true} else Set.univ
-
---   have set_eq : {f | E_isContained n E f} = Set.univ.pi s := by {
---     ext f
---     constructor
---     · -- AESOP did a thing
---       intro a
---       simp_all only [Subtype.forall, Set.mem_setOf_eq,
---         Bool.univ_eq, Set.mem_pi, Set.mem_univ, forall_const, s]
---       intro a_1 b
---       split
---       next h => simp_all only [Set.mem_singleton_iff]
---       next h => simp_all only [Set.mem_insert_iff, Set.mem_singleton_iff,
---         Bool.eq_false_or_eq_true_self]
---       -- AESOP won
---     · intro h
---       simp only [Set.mem_setOf_eq, E_isContained]
---       intro e
---       have := h e (Set.mem_univ _)
---       simpa [s]
---   }
-
---   rw [set_eq]; rw [@Measure.pi_pi]; rw [@Finset.prod_apply_ite]
---   -- SIMP does something...
---   simp only [PMF.toMeasure_apply_fintype, Fintype.univ_bool, Finset.mem_singleton,
---     Bool.true_eq_false, not_false_eq_true, Finset.sum_insert, Set.mem_singleton_iff,
---     Set.indicator_of_mem, PMF.bernoulli_apply, cond_true, Finset.sum_singleton, Bool.false_eq_true,
---     Set.indicator_of_notMem, add_zero, Finset.prod_const, Bool.univ_eq, Set.mem_insert_iff,
---     Bool.eq_false_or_eq_true_self, cond_false, ENNReal.coe_sub, ENNReal.coe_one, ENNReal.toReal_mul,
---     ENNReal.toReal_pow, ENNReal.coe_toReal]
---   -- rewrite numbers to get desired result.
---   rw [show ((p : ℝ≥0∞) + (1 - p)) = 1 from by
---     rw [add_tsub_cancel_of_le]; exact ENNReal.coe_le_one_iff.mpr le_one]
---   conv =>
---     enter [1,2]
---     simp only [ENNReal.toReal_one, one_pow]
---   norm_cast; norm_num
---   conv =>
---     enter [1, 2, 1]
---     rw [show ({x | x ∈ E} : Finset (EK n)) = E.toFinset from by
---       exact Set.filter_mem_univ_eq_toFinset E]
---   congr
---   exact Eq.symm (Set.ncard_eq_toFinset_card' E)
 
 /- # 3.1 ℙ/𝔼 Cycles # -/
-/- Probability of a Graph having X cycles with lenngth ≤ l -/
-noncomputable def ℙcyc_leL (l : ℕ)(X : ℕ) :=
-  (ΩKpmf n p le_one) (F_cyc_leL n l X)
-noncomputable def 𝔼cyc_leL (l : ℕ) :=
-  ∑(i ∈ Finset.range n), i * (ℙcyc_leL n p le_one l i)
-
-/- # 3.1.1 ℙ Cycles Theorems # -/
-/- Some theorems about that -/
--- @Lucas maybe
+/- Probability of #cycles with length ≤ l = X -/
+noncomputable def ℙcycle (l : ℕ)(X : ℕ) :=
+  (EKμ n p le_one) (cycSet_le n l X)
+/- Expected Value 𝔼[X] of #cycles with length ≤ l -/
+noncomputable def 𝔼cycle (l : ℕ) :=
+  ∑(i ∈ Finset.range n), i * (ℙcycle n p le_one l i)
 
 /- # 3.2 ℙ Independent Sets / α(G) # -/
 /- Probability of α(G) being bigger equal num -/

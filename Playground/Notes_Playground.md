@@ -283,3 +283,39 @@ example:
 -- Will be needed for various proofsteps
 -- -/
 ```
+
+```lean
+/- # Probability 2 : Higher Order # -/
+/- Create Higher Order Sample Space ΩK2 n of functions that maps "GRAPHS" to Bool -/
+abbrev ΩK2 := (ΩK n) → Bool -- Type signature
+noncomputable instance : Fintype (ΩK2 n) := by -- Is Fintype
+  exact Pi.instFintype
+instance : DiscreteMeasurableSpace (ΩK2 n) := by -- Is DiscreteMeasureSpace
+  exact MeasurableSingletonClass.toDiscreteMeasurableSpace
+/- Our base measure that maps a Graph to a probability -/
+noncomputable def μB (f : ΩK n) : Measure (Bool) :=
+  let p' := (EKpmf n p le_one f).toNNReal;
+  have h : p' ≤ 1 := by {
+    subst p'
+    simp only [EKpmf]
+    grw [PMF.coe_le_one]
+    · simp only [ENNReal.toNNReal_one, le_refl]
+    · simp only [ne_eq, ENNReal.one_ne_top, not_false_eq_true]
+  }
+  (PMF.bernoulli p' (h)).toMeasure
+/- Using μB we define a measure over ΩK2 n-/
+noncomputable abbrev ΩKμ : Measure (ΩK2 n) :=
+  Measure.pi fun f : ΩK n ↦ (μB n p le_one f)
+noncomputable instance : IsProbabilityMeasure (ΩKμ n p le_one) := by
+  unfold ΩKμ
+  have t : ∀ (i : ΩK n), IsProbabilityMeasure ((fun f ↦ μB n p le_one f) i) := by {
+    intro f
+    simp_all only [μB]
+    infer_instance
+  }
+  exact Measure.pi.instIsProbabilityMeasure fun f ↦ μB n p le_one f
+#check ΩKμ
+/- FInally have a PMF over ΩK2 n -/
+noncomputable def ΩKpmf : PMF (ΩK2 n) :=
+  ((ΩKμ n p le_one) : Measure (ΩK2 n)).toPMF
+```
