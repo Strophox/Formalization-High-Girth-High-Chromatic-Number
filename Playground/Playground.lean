@@ -71,23 +71,27 @@ So we specifically see that we need:
 * that `AEMeasurable X #`.
 -/
 --#check ℝ
-structure /-𝔊-/G (n : ℕ) (p : ENNReal) (hp : p ≤ 1) where
+abbrev Prob := { p : ℝ // 0 ≤ p ∧ p ≤ 1 }
+
+structure /-𝔊-/G (n : ℕ) (p : Prob) where
   graph : SimpleGraph (Fin n)
 
-variable (n : ℕ) (p : ENNReal) (hp : p ≤ 1)
+variable (n : ℕ) (p : Prob)
 
-def nodes {n : ℕ} {p : ENNReal} {hp : p ≤ 1} (_g : G n p hp) := n
+def nodes {n : ℕ} {p : Prob} (_g : G n p) := n
 
-def edge_prob {n : ℕ} {p : ENNReal} {hp : p ≤ 1} (_g : G n p hp) := p
+def edge_prob {n : ℕ} {p : Prob} (_g : G n p) := p
 
-def edge_prob_is_prob {n : ℕ} {p : ENNReal} {hp : p ≤ 1} (_g : G n p hp) := hp
+-- def edge_prob_is_prob {n : ℕ} {p : Prob} (g : G n p) := hp
 
 -- theorem nodes_is_eq_card (g : G n p hp) :
 --   g.graph : SimpleGraph (Fin (nodes g))
 
 #check G
-abbrev SpecificG := G 2 0.5 (sorry)
+abbrev SpecificG := G 2 ⟨0.5, by norm_num⟩
 #check SpecificG
+
+#check p.2
 
 -- example : (0.5 : ℝ) ≤ 1 := by norm_num
 
@@ -117,23 +121,23 @@ abbrev SpecificG := G 2 0.5 (sorry)
 
 -- #min_imports in MeasurableSpace
 
-instance G.instMeasurableSpace : MeasurableSpace (G n p hp) := ⊤
+instance G.instMeasurableSpace : MeasurableSpace (G n p) := ⊤
 
 noncomputable
-def μ {n : ℕ} {p : ENNReal} {hp : p ≤ 1} : Measure (G n p hp) :=
+def μ {n : ℕ} {p : Prob} : Measure (G n p) :=
   Measure.sum (fun a ↦ a)
 
 theorem /-MeasureTheory.-/meas_ge_le_lintegral_div
   -- {G n p : Type}  -- G(n,p) graphs type ?
   -- [MeasurableSpace (G n p)]
-  -- {μ : Measure (G n p hp)}  -- "#" Measure = count/number of elements(=graphs) divided by total elements(=graps) ?
-  {X : G n p hp → ENNReal}
+  -- {μ : Measure (G n p)}  -- "#" Measure = count/number of elements(=graphs) divided by total elements(=graps) ?
+  {X : G n p → ENNReal}
   (hf : AEMeasurable X μ)
   -- {"n/2" : ENNReal}
   {m : ENNReal}
   (hε : m ≠ 0)
   (hε' : m ≠ ⊤) :
-    μ {g : (G n p hp) | X g ≥ m/2 } ≤ (∫⁻ (g : G n p hp), X g ∂μ) / (m/2) := by
+    μ {g : (G n p) | X g ≥ m/2 } ≤ (∫⁻ (g : G n p), X g ∂μ) / (m/2) := by
   apply MeasureTheory.meas_ge_le_lintegral_div
   · assumption
   · refine ENNReal.div_ne_zero.mpr ?_
