@@ -319,3 +319,42 @@ noncomputable instance : IsProbabilityMeasure (ΩKμ n p le_one) := by
 noncomputable def ΩKpmf : PMF (ΩK2 n) :=
   ((ΩKμ n p le_one) : Measure (ΩK2 n)).toPMF
 ```
+
+```lean
+/- # 1.1 Graphs # -/
+/- Define a random subgraph sampled from KGraph n
+   The random subgraph is sampled via a function f from our sample space -/
+def RGraph (f : ΩK n) : Fingraph n where
+  Adj u v :=
+    (KGraph n).Adj u v ∧ ( (h : (KGraph n).Adj u v) → f ⟨ s(u, v),
+      by rw [SimpleGraph.mem_edgeSet, KGraph]; simpa only [ne_eq] ⟩ )
+  symm := by {
+    rintro a b ⟨h1,h2⟩
+    constructor
+    · symm; assumption
+    · intros adj
+      specialize h2 h1
+      conv =>
+        enter [1,1,1]
+        rw [Sym2.eq_swap]
+      assumption
+  }
+```
+
+```lean
+/- # 3.1 ℙ/𝔼 Cycles # -/
+/- Probability of #cycles with length ≤ l = X -/
+noncomputable def ℙcycle (l : ℕ)(X : ℕ) :=
+  (EKμ p n) (cycSet_le n l X)
+/- Expected Value 𝔼[X] of #cycles with length ≤ l -/
+noncomputable def 𝔼cycle (l : ℕ) :=
+  ∑(i ∈ Finset.range n.1), i * (ℙcycle p n l i)
+
+/- # 3.2 ℙ Independent Sets / α(G) # -/
+/- Probability of α(G) being bigger equal num -/
+noncomputable def ℙαG_ge (num : ℕ)(pre : n > 0) : ℝ≥0∞ :=
+  let meas := EKμ n p le_one;
+  meas {f : (ΩK n) | αG n f pre ≥ num}
+/- Some theorems about that -/
+-- @Lucas maybe
+```
