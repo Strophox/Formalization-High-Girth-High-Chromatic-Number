@@ -27,6 +27,10 @@ abbrev KGraph : Fingraph n := SimpleGraph.completeGraph (Fin n.1) -- A complete 
 /- Vertex Set -/
 abbrev VK := Fin n.1
 -- Properties :
+instance : Fintype (VK n) := by
+  exact Fin.fintype n.val
+instance : DecidableEq (VK n) := by
+  exact instDecidableEqFin n.val
 instance VK_nonempty : Nonempty (VK n) := by
   exact Fin.pos_iff_nonempty.mp n.2
 
@@ -43,6 +47,11 @@ abbrev EK := (KGraph n).edgeSet
 -- Properties :
 noncomputable instance : Fintype (EK n) := by
   exact Fintype.ofFinite ↑(EK n)
+-- Helpers
+theorem mem_EK_iff : ∀(n : Nval),∀(a b), s(a, b) ∈ EK n ↔ a ≠ b := by {
+  intros n a b;
+  simp only [SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq, ne_eq]
+}
 
 /- Complete EdgePowerSet -/
 abbrev PEK := Set (EK n)
