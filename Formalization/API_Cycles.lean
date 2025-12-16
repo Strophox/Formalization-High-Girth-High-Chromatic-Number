@@ -183,7 +183,17 @@ private lemma Cycle_Edgeset_eq_iff (C1 C2 : Permutation n) :
           simp only [Perm_to_Cycset]
       }
       | a::b::c::S => {
-        sorry
+        simp [Perm_to_Cycset]
+        split
+        · simp_all only [Permutation.mk.injEq, List.rotate_eq_nil_iff, reduceCtorEq]
+        · simp_all only [Permutation.mk.injEq, List.rotate_eq_singleton_iff, List.cons.injEq,
+          reduceCtorEq, and_false]
+        · simp_all only [Permutation.mk.injEq]; expose_names
+          have : ((a :: b :: c :: S).rotate k).length ≠ [head, head_1].length := by
+            simp only [List.length_rotate, List.length_cons, List.length_nil, zero_add,
+              Nat.reduceAdd, ne_eq, Nat.reduceEqDiff, not_false_eq_true]
+          exfalso; apply this; congr
+        · sorry
       }
     · sorry
   }
@@ -225,11 +235,12 @@ theorem CycleOfL_card : (CycleOfL n l).toFinset.card =
 
 /- # ..Probability i.e. 𝔼/ℙ # -/
 /- The expected number of cycles with length l-/
-noncomputable def E_CycleOfL := ∑(C : CycleOfL n l), Pr_EsubG p n (Cycle_toEdgeset n C)
+noncomputable def E_CycleOfL : ℝ := ∑(C : CycleOfL n l), Pr_EsubG p n (Cycle_toEdgeset n C)
 
 /- TODO: Prove that 𝔼[#cycles with length l] = n choose k * p^l -/
 theorem Cycset_eq_card :
-  E_CycleOfL n p l = (CycleOfL_card n l) * (p.1^l.1 : ℝ) := by sorry
+  E_CycleOfL n p l = Nat.choose n.1 l.1 * (Nat.factorial l.1) / (2 * l.1) * p.1^l.1
+  := by sorry
 
 end Theorems
 

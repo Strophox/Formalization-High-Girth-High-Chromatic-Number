@@ -1,46 +1,47 @@
-
-import Mathlib.Tactic
+import Mathlib
+import Formalization.API_Probability
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
 
-/- # 2.2 Maximal Independent Set α(G) # -/
+variable {α : Type*}
+open API_ℙ
+open scoped API_ℙ
+variable (n : Nval)
+variable (p : ℙval)
+namespace API_𝕀
 
-/- complement of graph sample -/
-abbrev f_complement (f : ΩK n) : ΩK n := fun e ↦ !(f e)
-/- checks if a given subset of vertices is fully connected -/
-abbrev isK (G : Fingraph n)(I : PVK n) :=
-  ∀(u v : I), u ≠ v → G.Adj u v
+/- # Defs  # -/
+/- Constructs a complete subgraph given a set of Vertices -/
+def CompleteEdgeSubset (I : PVK n) : PEK n:=
+  let : Fintype I := by exact Fintype.ofFinite ↑I;
+  let I2 := I.toFinset.powersetCard 2;
+  let : Fintype I2 := by exact I2.fintypeCoeSort;
+  have : ∀i2, i2 ∈ I.toFinset.powersetCard 2 → List.Nodup i2.toList := by {
+    intros pair i; exact Finset.nodup_toList pair }
+  I2.attach.image (
+   fun ⟨S,h_mem⟩ ↦
+   match h : S.toList with
+    | a::b::[] => ( ⟨ s(↑a,↑b),by -- The actual mapping
+      have : List.Nodup S.toList := by {exact Finset.nodup_toList S}
+      simp_all only [Finset.mem_powersetCard,
+        Set.subset_toFinset, and_imp, List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false,
+        not_false_eq_true, List.nodup_nil, and_self, and_true, SimpleGraph.edgeSet_top,
+        Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq] ⟩
+      : (EK n) )
+    -- Everything below here is just to say that these cases are impossible
+    | [] => by exfalso;subst I2;simp_all only [Finset.mem_powersetCard, Set.subset_toFinset,
+      and_imp, Finset.toList_eq_nil, Finset.coe_empty, Set.empty_subset, Finset.card_empty,
+      OfNat.zero_ne_ofNat, and_false]
+    | [a] => by exfalso;subst I2;simp_all only [Finset.mem_powersetCard, Set.subset_toFinset,
+      and_imp, Finset.toList_eq_singleton_iff, Finset.coe_singleton, Set.singleton_subset_iff,
+      Finset.card_singleton, OfNat.one_ne_ofNat, and_false]
+    | a::b::c::S => by
+      exfalso;subst I2;expose_names
+      have : S_1.toList.length = (S_1).card := by exact Finset.length_toList S_1
+      simp_all only [Finset.mem_powersetCard, Set.subset_toFinset, and_imp, List.length_cons,
+        Nat.reduceEqDiff]
+  )
 
-/- Get α(G)
-NOTE : Changed to circumvent difficult classical.choose existence proof
-NOTE : Lost access to explicit max independent set -/
-noncomputable def αG (f : ΩK n) : ℕ :=
-  let G := RGraph n (f_complement n f);
-  let IndSets := { I : PVK n | isK n G I };
-  let f (I : PVK n) : ℕ := I.ncard; -- function mapping the independent sets to their cardinalities
-  let ICard : Set ℕ := f '' IndSets; -- set containing all the cardinalities
-  let : Fintype ICard := by exact Fintype.ofFinite ↑ICard -- Tell Lean ICard can be a finite type
 
-  have h : ICard.toFinset.Nonempty := by { -- show that ICard nonempty
-
-    refine Set.Aesop.toFinset_nonempty_of_nonempty ?_
-    have h : IndSets.Nonempty → ICard.Nonempty := by
-      exact fun a ↦ Set.Nonempty.image f a
-    apply h; clear h
-
-    let prop : ∃v, v ∈ (Set.univ : Set (VK n)) := by {
-      have : Nonempty (VK n) := VK_nonempty n
-      exact Set.exists_mem_of_nonempty (VK n)
-    }; have v : VK n := Classical.choose prop
-    -- chosen a vertex | need to prove choose_spec?
-
-    rw [@Set.nonempty_def]; unfold IndSets; use {v}
-    simp only
-      [Subtype.forall, ne_eq,
-      Subtype.mk.injEq, Set.mem_setOf_eq, Set.mem_singleton_iff,
-      forall_eq, not_true_eq_false,
-      SimpleGraph.irrefl, imp_self]
-  }
-
-  ICard.toFinset.max' h -- get number
+end API_𝕀

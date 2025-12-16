@@ -90,8 +90,14 @@ noncomputable def F_EsubG (E : PEK n):=
 noncomputable def Pr_EsubG (E : PEK n) : ℝ :=
   (EKμ p n).real (F_EsubG n E)
 
+noncomputable def F_EdisjG (E : PEK n):=
+  { (f : ΩK n) | ∀(e : E), f e = false }
+noncomputable def Pr_EdisjG (E : PEK n) : ℝ :=
+  (EKμ p n).real (F_EdisjG n E)
+
 /- Pr[E' ⊆ E(G)] = p^|E'| -/
-theorem PrE (E : PEK n):
+@[scoped simp]
+theorem PrE_subs (E : PEK n):
   Pr_EsubG p n E = (p.1 : ℝ)^(E.ncard) := by {
     unfold Pr_EsubG F_EsubG
     rw [Measure.real_def]
@@ -144,16 +150,73 @@ theorem PrE (E : PEK n):
     exact Eq.symm (Set.ncard_eq_toFinset_card' E)
   }
 
+/- Pr[E' ∩ E(G) = ∅] = (1-p)^|E'| -/
+theorem PrE_disj (E : PEK n):
+Pr_EdisjG p n E = ((1 - p.1) : ℝ)^(E.ncard) := by {
+  unfold Pr_EdisjG F_EdisjG
+  rw [Measure.real_def]
+  simp only [EKμ, μ_bernoulli]
+
+  let (e : EK n): Decidable (e ∈ E) := by
+    exact Classical.propDecidable _
+  let f' : (EK n) → Set Bool :=
+    fun e ↦ if e ∈ E then {false} else Set.univ
+
+  have heq : { (f : (ΩK n)) | ∀(e : E), f e = false } = Set.univ.pi f' := by {
+    ext f
+    constructor
+    · -- AESOP WON
+      intro a
+      simp_all only [Subtype.forall, SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Bool.univ_eq,
+      Set.mem_pi, Set.mem_univ,forall_const, not_false_eq_true, f']
+      intro a_1 b
+      split
+      next h => simp_all only [not_false_eq_true, Set.mem_singleton_iff]
+      next h =>
+        simp_all only [not_false_eq_true, Set.mem_insert_iff, Set.mem_singleton_iff,
+        Bool.eq_false_or_eq_true_self]
+      -- AESOP WON
+    · intro h
+      simp only [Set.mem_setOf_eq]
+      intro e
+      have t : f ↑e ∈ f' ↑e := by exact h (↑e) trivial
+      simp [f'] at t; assumption
+  }
+  rw [heq, @Measure.pi_pi, @Finset.prod_apply_ite]
+  simp only [PMF.toMeasure_apply_fintype, Fintype.univ_bool, Finset.mem_singleton,
+    Bool.true_eq_false, not_false_eq_true, Finset.sum_insert, Set.mem_singleton_iff,
+    Set.indicator_of_notMem, Finset.sum_singleton, Set.indicator_of_mem, PMF.bernoulli_apply,
+    cond_false, ENNReal.coe_sub, ENNReal.coe_one, zero_add, Finset.prod_const, Bool.univ_eq,
+    Set.mem_insert_iff, Bool.eq_false_or_eq_true_self, cond_true, ENNReal.toReal_mul,
+    ENNReal.toReal_pow]
+  conv =>
+    enter [1,1]
+    rw [show ({x | x ∈ E} : Finset _).card = (E.toFinset).card from
+      by simp only [Set.toFinset_card, Fintype.card_ofFinset]]
+  rw [add_tsub_cancel_of_le ?_]
+  pick_goal 2;{ simp only [ENNReal.coe_le_one_iff, p.2] }
+  have t : ∀(n : ℕ), (ENNReal.toReal 1)^n = 1 := by exact fun n ↦ one_pow n
+  rw [t, mul_one]
+  norm_cast;congr
+  · refine (Real.toNNReal_eq_toNNReal_iff ?_ ?_).mp ?_
+    · grw [p.2]
+      · norm_num
+      · exact ContractingWith.one_sub_K_ne_top
+    · grw [p.2]; norm_num
+    · norm_num;exact rfl
+  exact Eq.symm (Set.ncard_eq_toFinset_card' E)
+}
+
 /- Pr[e ∈ E(G)] = p -/
 theorem Pre (e : EK n) :
 Pr_EsubG p n {e} = p.val := by
-  rw [(PrE p n {e})]; simp only [Set.ncard_singleton, pow_one]
+  rw [(PrE_subs p n {e})]; simp only [Set.ncard_singleton, pow_one]
 
 /- PR[E1 ⊆ E(G)] * PR[E1 ⊆ E(G)] = PR[E1 ∪ E2 ⊆ E(G)] IFF E1 E2 disjoint -/
-theorem PrE_union_eq (E1 E2 : PEK n) :
+theorem PrE_subs_union_eq (E1 E2 : PEK n) :
   Disjoint E1 E2 → Pr_EsubG p n (E1 ∪ E2) = Pr_EsubG p n E1 * Pr_EsubG p n E2 := by {
     intros pre
-    simp only [PrE]
+    simp only [PrE_subs]
 
     have heq : (E1 ∪ E2).ncard = E1.ncard + E2.ncard := by {
       rw [Set.ncard_union_eq ?_ ?_ ?_]
