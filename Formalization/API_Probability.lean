@@ -1,14 +1,14 @@
 import Mathlib
-open MeasureTheory ProbabilityTheory
-open scoped ENNReal NNReal
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
 
+open MeasureTheory
+open scoped ENNReal NNReal
+
 variable {α : Type*}
 namespace API_ℙ
 /- # Definitions # -/
-
 /- Values -/
 structure ℙval where
   val   : ℝ≥0
@@ -38,6 +38,8 @@ instance VK_nonempty : Nonempty (VK n) := by
 abbrev PVK := Set (Fin n.1)
 noncomputable instance : Fintype (PVK n) := by
   exact Fintype.ofFinite ↑(PVK n)
+noncomputable instance (I : PVK n) : Fintype I := by
+  exact Fintype.ofFinite ↑I
 -- Properties :
 instance PVK_nonempty : Nonempty (PVK n) := by
   exact instNonemptyOfInhabited
@@ -47,7 +49,10 @@ abbrev EK := (KGraph n).edgeSet
 -- Properties :
 noncomputable instance : Fintype (EK n) := by
   exact Fintype.ofFinite ↑(EK n)
+noncomputable instance : DecidableEq (EK n) := by
+  exact instDecidableEqOfLawfulBEq
 -- Helpers
+@[scoped simp]
 theorem mem_EK_iff : ∀(n : Nval),∀(a b), s(a, b) ∈ EK n ↔ a ≠ b := by {
   intros n a b;
   simp only [SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq, ne_eq]
@@ -79,7 +84,6 @@ noncomputable abbrev EKμ : Measure (ΩK n) :=
   Measure.pi fun (_ : EK n) ↦ (μ_bernoulli p)
 noncomputable instance EKμIsProbMeas : IsProbabilityMeasure (EKμ p n) := by
   exact Measure.pi.instIsProbabilityMeasure fun _ ↦ μ_bernoulli p
-#check EKμ
 /- Define a PMF over ΩK -/
 noncomputable def EKpmf : PMF (ΩK n) :=
   (EKμ p n).toPMF
@@ -212,26 +216,4 @@ theorem Pre (e : EK n) :
 Pr_EsubG p n {e} = p.val := by
   rw [(PrE_subs p n {e})]; simp only [Set.ncard_singleton, pow_one]
 
-/- PR[E1 ⊆ E(G)] * PR[E1 ⊆ E(G)] = PR[E1 ∪ E2 ⊆ E(G)] IFF E1 E2 disjoint -/
-theorem PrE_subs_union_eq (E1 E2 : PEK n) :
-  Disjoint E1 E2 → Pr_EsubG p n (E1 ∪ E2) = Pr_EsubG p n E1 * Pr_EsubG p n E2 := by {
-    intros pre
-    simp only [PrE_subs]
-
-    have heq : (E1 ∪ E2).ncard = E1.ncard + E2.ncard := by {
-      rw [Set.ncard_union_eq ?_ ?_ ?_]
-      · assumption
-      · exact Set.toFinite E1
-      · exact Set.toFinite E2
-    }
-
-    have arith0 : ∀(a b : ℕ), (p.val : ℝ)^a * p.val^b = p.val^(a+b) := by {
-      intros a b
-      norm_cast; exact Eq.symm (pow_add p.val a b)
-    }
-
-    rw [heq, arith0]
-  }
-
-/- -/
 end API_ℙ
