@@ -46,7 +46,7 @@ example : 1 + 2 = 3 := by rfl
 ---------------------------------------------------------------------------------------------------/
 
 
-/- # hello, world
+/- # Markov shenanigans and progress
 Further information / sources:
 * —
 ---------------------------------------------------------------------------------------------------/
@@ -306,4 +306,24 @@ abbrev X_add_X' : RandomVariable (Fin 2 × Fin 2) (Fin 3) := fun (a, b) => ⟨(X
 #eval Pr X_add_X' {2}
 
 example : Pr X_add_X' {1} = 1 / 2 := by decide +kernel
+---------------------------------------------------------------------------------------------------/
+
+
+/- # Encoding the 'Exists' Quantifier using 'Forall'
+Further information / sources:
+* —
+---------------------------------------------------------------------------------------------------/
+
+theorem exists_scott_encoding (T : Type) (P : T → Prop) :
+    (∃ x : T, P x) ↔ (∀ Q : Prop, (∀ x : T, P x → Q) → Q) := by
+  constructor
+  · intros Ex_Px Q Ax_PxtoQ
+    obtain ⟨x, Px⟩ := Ex_Px
+    apply (Ax_PxtoQ x Px)
+  · intros AQ_PxtoQ_to_Q
+    --specialize (AQ_PxtoQ_to_Q (∃x, P x))
+    apply AQ_PxtoQ_to_Q
+    intros x Px
+    refine ⟨x,Px⟩
+
 ---------------------------------------------------------------------------------------------------/
