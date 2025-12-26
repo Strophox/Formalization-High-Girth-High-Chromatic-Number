@@ -92,6 +92,7 @@ def S2_mapTo_EK (I : (PairSet n)) : I.1 ↪ (EK n) :=
     · grind only
   ⟩
 -- Properties
+@[scoped grind! .]
 instance S2_mapTo_EK_inj (I : PairSet n):
   Function.Injective (S2_mapTo_EK n I) := by
   exact Function.Embedding.injective (S2_mapTo_EK n I)
@@ -224,6 +225,9 @@ def αG (f : ΩK n) : ℕ := (MaxIndSet n f).ncard
 
 end IndSets
 
+section Probability
+open MeasureTheory
+open scoped ENNReal NNReal
 /- # PROBABILITY #-/
 
 /- Probability of a specific Independent set appearing in a Graph -/
@@ -247,38 +251,39 @@ def bounded_PrI_ofsz (sz : SZval n) :=
   ∑(I ∈ (IndSets_ofsz n sz)), Pr_EdisjG p n (EK_sub n I)
 
 /- A helper lemma for the final step of the start of part 2. -/
-lemma part2 (sz : SZval n) :
+lemma bounded_PrI_ofsz_val (sz : SZval n) :
   bounded_PrI_ofsz n p sz = (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
   unfold bounded_PrI_ofsz
   simp [EK_sub_card]
   trans ∑ x ∈ IndSets_ofsz n sz, (1 - ↑p.val) ^ sz.val.choose 2
-  · apply Finset.sum_congr rfl
+  · apply Finset.sum_congr rfl -- <--Gemini pulled this out of somewhere
     intros x hx
     have t : x.card = sz.1 := by exact IndSets_ofsz_mem_card n sz ⟨x,hx⟩
     rw [t]
   · rw [Finset.sum_const]
     simp only [nsmul_eq_mul] -- Fixes ℕ * ℝ typing issues
     rw [IndSets_ofsz_card]
-/- We get that the probability of a graph containing some independent set of size sz is
+/- We get that the probability of a graph containing at least one independent set of size sz is
    upper bounded by !!! (n choose sz) * (1 - p)^(sz choose 2) !!!
    This is the first step of part 2 YIPPIE!! (we can handwave the α-part) -/
-theorem PART2 (sz : SZval n):
+theorem PrI_ofsz_UBval (sz : SZval n):
   (PrI_ofsz n p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
-  rw [←part2]
-  unfold bounded_PrI_ofsz PrI_ofsz
-  let E' : PPEK n := { E | ∃I ∈ IndSets_ofsz n sz, E = (EK_sub n ↑I) }
-  have ub := PrE_disj_UB p n E'
-  have heq1 : (⋃ E ∈ Set.toFinset E', F_EdisjG n E) =
-    (⋃ I ∈ IndSets_ofsz n sz, F_EdisjG n (EK_sub n ↑I)) := by {
-      subst E'
-      simp only [Finset.mem_powersetCard, Set.toFinset_univ, Finset.subset_univ, true_and,
-        Set.toFinset_setOf, Finset.mem_filter, Finset.mem_univ, Set.iUnion_exists, Set.biUnion_and',
-        Set.iUnion_iUnion_eq_left]
-    }; rw [←heq1]
-  have heq2 : ∑ E ∈ Set.toFinset E', Pr_EdisjG p n E =
-    ∑ I ∈ IndSets_ofsz n sz, Pr_EdisjG p n (EK_sub n ↑I) := by {
-      -- [TODO!]
-      sorry
-    }; rwa [←heq2]
+  let IndSZ := (IndSets_ofsz n sz);
+  rw [←bounded_PrI_ofsz_val]
+  unfold bounded_PrI_ofsz PrI_ofsz Pr_EdisjG
+  set M := (EKμ p n);
 
+  -- TYPES :(
+  simp only [Measure.real_def];rw [← ENNReal.toReal_sum]
+  pick_goal 2;{simp only [ne_eq, measure_ne_top, not_false_eq_true, implies_true]}
+  apply ENNReal.toReal_mono
+  {simp only [ne_eq, ENNReal.sum_eq_top, Finset.mem_powersetCard, Set.toFinset_univ,
+    Finset.subset_univ, true_and, measure_ne_top, and_false, exists_const, not_false_eq_true]}
+  -- TYPES :(
+
+  refine MeasureTheory.measure_biUnion_finset_le --Union Bound
+    (IndSets_ofsz n sz)
+    (fun I ↦ F_EdisjG n (EK_sub n I))
+
+end Probability
 end API_𝕀
