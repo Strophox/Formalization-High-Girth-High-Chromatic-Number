@@ -52,7 +52,7 @@ noncomputable instance : Fintype (EK n) := by
 noncomputable instance : DecidableEq (EK n) := by
   exact instDecidableEqOfLawfulBEq
 -- Helpers
-@[scoped simp]
+@[scoped simp 10]
 theorem mem_EK_iff : ∀(n : Nval),∀(a b), s(a, b) ∈ EK n ↔ a ≠ b := by {
   intros n a b;
   simp only [SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq, ne_eq]
@@ -63,6 +63,16 @@ abbrev PEK := Set (EK n)
 -- Properties :
 noncomputable instance : Fintype (PEK n) := by
   exact Set.fintype
+
+/- Sets of Edgesets -/
+abbrev PPEK := Set (PEK n)
+-- Properties :
+noncomputable instance : Fintype (PPEK n) := by
+  exact Set.fintype
+noncomputable instance (E': PPEK n): Fintype E' := by
+  exact Fintype.ofFinite ↑E'
+noncomputable instance PPEK_Countable (E': PPEK n) : Set.Countable E' := by
+  exact Set.to_countable E'
 
 /- Graph Sample Space ⇒
 The universe of functions Edges -> Bool -/
@@ -100,7 +110,7 @@ noncomputable def Pr_EdisjG (E : PEK n) : ℝ :=
   (EKμ p n).real (F_EdisjG n E)
 
 /- Pr[E' ⊆ E(G)] = p^|E'| -/
-@[scoped simp]
+@[scoped simp 10]
 theorem PrE_subs (E : PEK n):
   Pr_EsubG p n E = (p.1 : ℝ)^(E.ncard) := by {
     unfold Pr_EsubG F_EsubG
@@ -154,6 +164,7 @@ theorem PrE_subs (E : PEK n):
     exact Eq.symm (Set.ncard_eq_toFinset_card' E)
   }
 
+@[scoped simp 10]
 /- Pr[E' ∩ E(G) = ∅] = (1-p)^|E'| -/
 theorem PrE_disj (E : PEK n):
 Pr_EdisjG p n E = ((1 - p.1) : ℝ)^(E.ncard) := by {
@@ -211,9 +222,38 @@ Pr_EdisjG p n E = ((1 - p.1) : ℝ)^(E.ncard) := by {
   exact Eq.symm (Set.ncard_eq_toFinset_card' E)
 }
 
+@[scoped simp 10]
 /- Pr[e ∈ E(G)] = p -/
-theorem Pre (e : EK n) :
+theorem Pre_exists (e : EK n) :
 Pr_EsubG p n {e} = p.val := by
   rw [(PrE_subs p n {e})]; simp only [Set.ncard_singleton, pow_one]
+
+/- Union bound lemma 1 (Inclusion)-/
+theorem PrE_subs_UB (E' : PPEK n) :
+  (EKμ p n).real (⋃(E ∈ E'.toFinset),(F_EsubG n E)) ≤ ∑(E ∈ E'.toFinset), Pr_EsubG p n E := by
+  unfold Pr_EsubG
+  set M := (EKμ p n);
+
+  simp only [Measure.real_def]; rw [← ENNReal.toReal_sum]
+  pick_goal 2;{simp only [Set.mem_toFinset, ne_eq, measure_ne_top, not_false_eq_true, implies_true]}
+  apply ENNReal.toReal_mono
+  {simp only [ne_eq, ENNReal.sum_eq_top, Set.mem_toFinset, measure_ne_top, and_false, exists_const,
+    not_false_eq_true]}
+
+  refine MeasureTheory.measure_biUnion_finset_le E'.toFinset (F_EsubG n)
+
+/- Union bound lemma 2 (Exclusion)-/
+theorem PrE_disj_UB (E' : PPEK n) :
+  (EKμ p n).real (⋃(E ∈ E'.toFinset),(F_EdisjG n E)) ≤ ∑(E ∈ E'.toFinset), Pr_EdisjG p n E := by
+  unfold Pr_EdisjG
+  set M := (EKμ p n);
+
+  simp only [Measure.real_def]; rw [← ENNReal.toReal_sum]
+  pick_goal 2;{simp only [Set.mem_toFinset, ne_eq, measure_ne_top, not_false_eq_true, implies_true]}
+  apply ENNReal.toReal_mono
+  {simp only [ne_eq, ENNReal.sum_eq_top, Set.mem_toFinset, measure_ne_top, and_false, exists_const,
+    not_false_eq_true]}
+
+  refine MeasureTheory.measure_biUnion_finset_le E'.toFinset (F_EdisjG n)
 
 end API_ℙ
