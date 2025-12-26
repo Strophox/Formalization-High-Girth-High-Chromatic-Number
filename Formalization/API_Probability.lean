@@ -8,7 +8,7 @@ open scoped ENNReal NNReal
 
 variable {α : Type*}
 namespace API_ℙ
-/- # Definitions # -/
+/- # DEFS # -/
 /- Values -/
 structure ℙval where
   val   : ℝ≥0
@@ -98,7 +98,7 @@ noncomputable instance EKμIsProbMeas : IsProbabilityMeasure (EKμ p n) := by
 noncomputable def EKpmf : PMF (ΩK n) :=
   (EKμ p n).toPMF
 
-/- # THEOREMS # -/
+/- # PROBABILITY # -/
 noncomputable def F_EsubG (E : PEK n):=
   { (f : ΩK n) | ∀(e : E), f e }
 noncomputable def Pr_EsubG (E : PEK n) : ℝ :=
