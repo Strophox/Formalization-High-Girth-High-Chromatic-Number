@@ -151,6 +151,7 @@ theorem EK_sub_card (I : PVK n) : (EK_sub n I).ncard = Nat.choose I.ncard 2 := b
 section IndSets
 /- # INDSETS # -/
 
+/- Have a bounded size value -/
 structure SZval where
 val : ℕ
 proof : val ≤ n.1
@@ -224,7 +225,7 @@ def αG (f : ΩK n) : ℕ := (MaxIndSet n f).ncard
 end IndSets
 
 /- # PROBABILITY #-/
-open scoped API_𝕀
+
 /- Probability of a specific Independent set appearing in a Graph -/
 noncomputable def PrI (I : PVK n) : ℝ := Pr_EdisjG p n (EK_sub n I)
 -- Properties
