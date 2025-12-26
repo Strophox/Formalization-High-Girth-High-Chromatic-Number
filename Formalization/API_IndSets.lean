@@ -118,17 +118,16 @@ lemma S2_mapTo_EK_Card (I : PairSet n):
 
 /- Complete Edgeset of a given Vertex set -/
 def EK_sub (I : PVK n) : PEK n :=
-  -- Prerequesites
   let I' := SS2 n I
   -- The complete edgeset on vertexset I
   I'.1.attach.image (S2_mapTo_EK n I')
--- Properties
-noncomputable instance (I : PVK n) : Fintype (EK_sub n I) := by
+-- Properties:
+noncomputable -- Is Finite
+instance (I : PVK n) : Fintype (EK_sub n I) := by
   exact Fintype.ofFinite ↑(EK_sub n I)
--- Properties. Cardinality of a complete edgeset on a vertex set is (n choose 2)
+-- Cardinality of a complete edgeset on a vertex set is (n choose 2)
 @[scoped grind =]
-theorem EK_sub_card (I : PVK n) : (EK_sub n I).ncard = Nat.choose I.ncard 2
-:= by {
+theorem EK_sub_card (I : PVK n) : (EK_sub n I).ncard = Nat.choose I.ncard 2 := by {
   suffices h : (EK_sub n I).toFinset.card = Nat.choose I.toFinset.card 2 by {
     calc
       Set.ncard (EK_sub n I)
@@ -149,32 +148,136 @@ theorem EK_sub_card (I : PVK n) : (EK_sub n I).ncard = Nat.choose I.ncard 2
     }
   }
 
+section IndSets
+/- # INDSETS # -/
+
+structure SZval where
+val : ℕ
+proof : val ≤ n.1
+variable (sz : SZval n)
+
+/- The set of all possible vertexsets of size sz -/
+noncomputable
+abbrev IndSets_ofsz := (Set.univ : Set (VK n)).toFinset.powersetCard sz.1
+-- Properties
+noncomputable
+instance : Fintype (IndSets_ofsz n sz) := by
+  exact (IndSets_ofsz n sz).fintypeCoeSort
+-- There are n choose sz such vertex sets.
+@[local grind =]
+theorem IndSets_ofsz_card :
+  (IndSets_ofsz n sz).card = n.1.choose sz.1 := by
+  unfold IndSets_ofsz
+  simp only [Set.toFinset_univ, Finset.card_powersetCard, Finset.card_univ, Fintype.card_fin]
+-- Each memeber of that set has size sz
+@[local grind =]
+theorem IndSets_ofsz_mem_card :
+  ∀(I : (IndSets_ofsz n sz)), I.1.card = sz.1 := by
+  {
+    intros I;unfold IndSets_ofsz at I; obtain ⟨I,ip⟩ := I; simp only
+    grind only [= Finset.mem_powersetCard]
+  }
+
+/- All independent sets in a given graph -/
+def IndSetsG (f : ΩK n) :=
+  let noedge (I : PVK n)(v1 v2 : I)(h : v1 ≠ v2) :=
+    f ⟨s(v1,v2),by rw[mem_EK_iff];grind only [cases eager Subtype]⟩ = false;
+  let isInd (I : PVK n):= ∀(v1 v2 : I), (h : v1 ≠ v2) → noedge I v1 v2 h
+  {(I : PVK n) | isInd I}
+-- Properties
+noncomputable -- Is finite
+instance (f : ΩK n) : Fintype (IndSetsG n f) := by
+  exact Fintype.ofFinite ↑(IndSetsG n f)
+noncomputable -- Its members are also finite
+instance (f : ΩK n)(I : IndSetsG n f) : Fintype I := by
+  exact instFintypeElemFinVal n ↑I
+-- There will always exist an Independent set
+instance (f : ΩK n) : Inhabited (IndSetsG n f) := by
+  use { }; unfold IndSetsG; simp only [ne_eq, Subtype.forall, Subtype.mk.injEq, Set.mem_setOf_eq,
+    Set.mem_empty_iff_false, IsEmpty.forall_iff, implies_true]
+instance (f : ΩK n) : Nonempty (IndSetsG n f) := by
+  exact instNonemptyOfInhabited
+
+/- There always exists a maximal independent set in a graph -/
+private def MaxIndSetSpec (f : ΩK n) :
+  ∃(Imax : PVK n),
+  ∀(I : (IndSetsG n f)),Imax.toFinset.card ≥ I.1.toFinset.card := by {
+    by_contra cnt
+    simp only [not_exists,not_forall] at cnt
+    specialize (cnt (Set.univ : PVK n))
+    obtain ⟨I,cnt⟩ := cnt
+    apply cnt; gcongr; exact fun ⦃a⦄ a_1 ↦ trivial
+    -- No clue how I managed this one
+  }
+-- Obtain such maximal independent set using Axiom of Choice
+def MaxIndSet (f : ΩK n) : PVK n := Classical.choose (MaxIndSetSpec n f)
+def MaxIndSetP (f : ΩK n) := Classical.choose_spec (MaxIndSetSpec n f)
+-- Properties:
+-- [TODO]
+
+/- The size of a maximal independent set -/
+noncomputable
+def αG (f : ΩK n) : ℕ := (MaxIndSet n f).ncard
+-- Properties:
+-- [TODO]
+
+end IndSets
+
 /- # PROBABILITY #-/
+open scoped API_𝕀
 /- Probability of a specific Independent set appearing in a Graph -/
 noncomputable def PrI (I : PVK n) : ℝ := Pr_EdisjG p n (EK_sub n I)
-/- The value of PrI -/
+-- Properties
+-- Evaluates to (1-p)^(|I|.choose 2)
+@[scoped grind =]
 theorem PrI_val (I : PVK n) : (PrI n p I) = (1-p.1)^(Nat.choose I.ncard 2) := by {
   unfold PrI; rw [PrE_disj]; congr; grind only [= EK_sub_card]
 }
 
-/- Maybe prove that some things about maximal independent set size? -/
+/- # The final stretch # -/
+/- The Probabilities we need -/
+-- Exact probability
+private noncomputable
+def PrI_ofsz (sz : SZval n) :=
+  (EKμ p n).real (⋃(I ∈ (IndSets_ofsz n sz)),(F_EdisjG n (EK_sub n I)))
+-- Bounded probability
+private noncomputable
+def bounded_PrI_ofsz (sz : SZval n) :=
+  ∑(I ∈ (IndSets_ofsz n sz)), Pr_EdisjG p n (EK_sub n I)
 
-/- More definitions for IndSets. -/
-private noncomputable
-def IndSets_sz (sz : ℕ)(_ : sz ≤ n.1) := (Set.univ : Set (VK n)).toFinset.powersetCard sz
-private noncomputable
-def PrI_ofsz (sz : ℕ)(h : sz ≤ n.1) :=
-  (EKμ p n).real (⋃(I ∈ (IndSets_sz n sz h)),(F_EdisjG n (EK_sub n I)))
-private noncomputable
-def bounded_PrI_ofsz (sz : ℕ)(h : sz ≤ n.1) :=
-  ∑(I ∈ (IndSets_sz n sz h)), Pr_EdisjG p n (EK_sub n I)
-
-/- The Final Proofs for IndSets-/
-lemma part2 (sz : ℕ)(h : sz ≤ n.1) :
-  bounded_PrI_ofsz n p sz h = (n.1.choose sz) * (1 - p.1)^(sz.choose 2) := by
-  sorry
-theorem PART2 (sz : ℕ)(h : sz ≤ n.1) :
-  (PrI_ofsz n p sz h) ≤ (n.1.choose sz) * (1 - p.1)^(sz.choose 2) := by
-  sorry
+/- A helper lemma for the final step of the start of part 2. -/
+lemma part2 (sz : SZval n) :
+  bounded_PrI_ofsz n p sz = (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
+  unfold bounded_PrI_ofsz
+  simp [EK_sub_card]
+  trans ∑ x ∈ IndSets_ofsz n sz, (1 - ↑p.val) ^ sz.val.choose 2
+  · apply Finset.sum_congr rfl
+    intros x hx
+    have t : x.card = sz.1 := by exact IndSets_ofsz_mem_card n sz ⟨x,hx⟩
+    rw [t]
+  · rw [Finset.sum_const]
+    simp only [nsmul_eq_mul] -- Fixes ℕ * ℝ typing issues
+    rw [IndSets_ofsz_card]
+/- We get that the probability of a graph containing some independent set of size sz is
+   upper bounded by !!! (n choose sz) * (1 - p)^(sz choose 2) !!!
+   This is the first step of part 2 YIPPIE!! (we can handwave the α-part) -/
+theorem PART2 (sz : SZval n):
+  (PrI_ofsz n p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
+  rw [←part2]
+  unfold bounded_PrI_ofsz PrI_ofsz
+  let E' : PPEK n := { E | ∃I ∈ IndSets_ofsz n sz, E = (EK_sub n ↑I) }
+  have ub := PrE_disj_UB p n E'
+  have heq1 : (⋃ E ∈ Set.toFinset E', F_EdisjG n E) =
+    (⋃ I ∈ IndSets_ofsz n sz, F_EdisjG n (EK_sub n ↑I)) := by {
+      subst E'
+      simp only [Finset.mem_powersetCard, Set.toFinset_univ, Finset.subset_univ, true_and,
+        Set.toFinset_setOf, Finset.mem_filter, Finset.mem_univ, Set.iUnion_exists, Set.biUnion_and',
+        Set.iUnion_iUnion_eq_left]
+    }; rw [←heq1]
+  have heq2 : ∑ E ∈ Set.toFinset E', Pr_EdisjG p n E =
+    ∑ I ∈ IndSets_ofsz n sz, Pr_EdisjG p n (EK_sub n ↑I) := by {
+      -- [TODO!]
+      sorry
+    }; rwa [←heq2]
 
 end API_𝕀

@@ -63,6 +63,8 @@ abbrev PEK := Set (EK n)
 -- Properties :
 noncomputable instance : Fintype (PEK n) := by
   exact Set.fintype
+noncomputable instance : DecidableEq (PEK n) := by
+  exact Classical.typeDecidableEq (PEK n)
 
 /- Sets of Edgesets -/
 abbrev PPEK := Set (PEK n)
