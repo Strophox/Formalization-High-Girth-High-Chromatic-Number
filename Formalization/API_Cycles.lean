@@ -12,17 +12,17 @@ open scoped API_ℙ
 variable (n : Nval)
 variable (p : ℙval)
 
-section Defs
-open Equiv
-/- =============================================== -/
-/- # Defs # -/
-/- =============================================== -/
-
 /- Length of a cycle must be ≥ 3 -/
 structure Cval where
   val : ℕ
   proof : 3 ≤ val
 variable (l : Cval)
+
+section Defs
+open Equiv
+/- =============================================== -/
+/- # Defs # -/
+/- =============================================== -/
 
 /- =============================================== -/
 /- Set of all sets of size l chosen from a PVK -/
@@ -62,25 +62,25 @@ instance : Nonempty (Permutation l) := by
 
 /- =============================================== -/
 /- Permutations of size l as Lists -/
-structure PermList (S : SSn n l) where
+structure PermList {n}{l} (S : SSn n l) where
   val : List S.1
   nodup : List.Nodup val
   len : val.length = l.1
 -- PROPERTIES
 -- finite
 noncomputable
-instance (S : SSn n l) : Fintype (PermList n l S) := by
+instance (S : SSn n l) : Fintype (PermList S) := by
   let T := {xs : List S // List.Nodup xs}
   refine Fintype.ofInjective
-    ( fun (P : PermList n l S) ↦ (⟨P.1,P.2⟩ : T) )
+    ( fun (P : PermList S) ↦ (⟨P.1,P.2⟩ : T) )
     ( by
       simp only [Function.Injective, Subtype.mk.injEq]
       intro p1 p2 eq; obtain ⟨⟩ := p1; obtain ⟨⟩ := p2; simp_all only
     )
 -- can decide mem = mem'
 noncomputable
-instance (S : SSn n l): DecidableEq (PermList n l S) := by
-  exact Classical.typeDecidableEq (PermList n l S)
+instance (S : SSn n l): DecidableEq (PermList S) := by
+  exact Classical.typeDecidableEq (PermList S)
 -- universe card = l! (PermList_univ_card ↓)
 /- =============================================== -/
 
@@ -158,7 +158,7 @@ def idxToVal (S : SSn n l): Fin l.1 ↪ S.1 :=
 /- =============================================== -/
 /- A bijection from values to indices and back -/
 private
-def idx_val (S : SSn n l) : Fin l.1 ≃ S.1 := {
+def idx_val {n}{l} (S : SSn n l) : Fin l.1 ≃ S.1 := {
   toFun := idxToVal n l S
   invFun := valToIdx n l S
   left_inv := by {
@@ -181,10 +181,10 @@ def idx_val (S : SSn n l) : Fin l.1 ≃ S.1 := {
 
 /- =============================================== -/
 /- Embedding from Permutation to PermList. -/
-def PermToPermList (S : SSn n l): Permutation l ↪ PermList n l S :=
+def PermToPermList {n}{l} (S : SSn n l): Permutation l ↪ PermList S :=
   ⟨
     fun σ ↦ ⟨ --Permute Fin n then convert to values of S
-      (List.ofFn σ.toFun).map (idx_val n l S).toFun
+      (List.ofFn σ.toFun).map (idx_val S).toFun
       , by -- Prove nodup
       refine List.Nodup.map ?_ ?_
       · simp only [toFun_as_coe]
@@ -199,38 +199,38 @@ def PermToPermList (S : SSn n l): Permutation l ↪ PermList n l S :=
       simp only [List.map_ofFn]
       intro p1 p2 heq
       simp only [toFun_as_coe, PermList.mk.injEq, List.ofFn_inj] at heq
-      apply (idx_val n l S).injective.comp_left at heq
+      apply (idx_val S).injective.comp_left at heq
       simp_all only [DFunLike.coe_fn_eq]
   ⟩
 -- PROPERTIES
 -- preserves length
 @[local grind =, local simp]
-theorem PermToPermList_len (S : SSn n l):
-  ∀(σ : Permutation l), ((PermToPermList n l S).1 σ).1.length = S.1.card := by
+theorem PermToPermList_len {n}{l} (S : SSn n l):
+  ∀(σ : Permutation l), ((PermToPermList S).1 σ).1.length = S.1.card := by
   intro σ; unfold PermToPermList
   simp only [toFun_as_coe, List.map_ofFn, List.length_ofFn, SSn_mem_card]
 -- preserves mem
-theorem PermToPermList_mem_iff (S : SSn n l) :
-  ∀(σ : Permutation l)(s : ↑S), s ∈ ((PermToPermList n l S).1 σ).1 := by
+theorem PermToPermList_mem_iff {n}{l} (S : SSn n l) :
+  ∀(σ : Permutation l)(s : ↑S), s ∈ ((PermToPermList S).1 σ).1 := by
   intro p s; simp only [Function.Embedding.toFun_eq_coe]
-  have t0 := PermToPermList_len n l S p
+  have t0 := PermToPermList_len S p
   simp only [Function.Embedding.toFun_eq_coe,SSn_mem_card] at t0
   rw [← List.mem_toFinset]
   have t1 :=
     Finset.eq_univ_of_card
-    ((PermToPermList n l S) p).val.toFinset
+    ((PermToPermList S) p).val.toFinset
     (
       by
       simp only [Fintype.card_coe]
-      rw [←PermToPermList_len n l S p]
+      rw [←PermToPermList_len S p]
       simp only [Function.Embedding.toFun_eq_coe]
-      refine List.toFinset_card_of_nodup ((PermToPermList n l S) p).nodup
+      refine List.toFinset_card_of_nodup ((PermToPermList S) p).nodup
     )
   rw [t1]; exact Finset.mem_univ s
 -- surjective (PAIN)
-theorem PermToPermList_surj (S : SSn n l): Function.Surjective (PermToPermList n l S) := by
+theorem PermToPermList_surj {n}{l} (S : SSn n l): Function.Surjective (PermToPermList S) := by
   intro ⟨pl,plnodup,pllen⟩; unfold PermToPermList
-  let F := idx_val n l S
+  let F := idx_val S
   simp only [toFun_as_coe, List.map_ofFn, Function.Embedding.coeFn_mk, PermList.mk.injEq]
   have ⟨L,heq0⟩ : ∃(L : List (Fin l.1)), L.map F = pl := by {
     use pl.map F.2
@@ -264,8 +264,8 @@ theorem PermToPermList_surj (S : SSn n l): Function.Surjective (PermToPermList n
   }; rw [←heq1]; use σ
   simp only [List.map_ofFn, F]
 -- bijective
-theorem PermToPermList_bij (S : SSn n l) : (PermToPermList n l S).1.Bijective :=
-  ⟨(PermToPermList n l S).injective,PermToPermList_surj n l S⟩
+theorem PermToPermList_bij {n}{l} (S : SSn n l) : (PermToPermList S).1.Bijective :=
+  ⟨(PermToPermList S).injective,PermToPermList_surj S⟩
 /- =============================================== -/
 
 /- =============================================== -/
@@ -308,11 +308,12 @@ lemma succ_neq : ∀(a : Fin l.1), a ≠ succ l a := by
   obtain h|h := h
   · rw [h];linarith
   · rw [h];simp only [Nat.mod_self, ne_eq];have := l.2;linarith
+/- =============================================== -/
 
 /- =============================================== -/
 /- Given a Permlist, this is an Embedding from Fin l.1 to an edge, part of a Cycle -/
 private
-def idxToEK {S : SSn n l}(pl : PermList n l S) : Fin l.1 ↪ EK n :=
+def idxToEK {n}{l}{S : SSn n l}(pl : PermList S) : Fin l.1 ↪ EK n :=
   ⟨ fun idx ↦
     let h0 : idx < pl.val.length := by rw [pl.3];exact idx.isLt;
     let h1 : ((succ l) idx) < pl.val.length := by rw [pl.3];exact succ_lt_l l idx;
@@ -349,22 +350,29 @@ def idxToEK {S : SSn n l}(pl : PermList n l S) : Fin l.1 ↪ EK n :=
   ⟩
 /- =============================================== -/
 /- Given a Permlist, this will give us the corresponding PEC (Cycle Edgeset) -/
-def idxToPEC {S : SSn n l}(pl : PermList n l S) : PEK n :=
-  (Finset.univ : Finset (Fin l.1)).image (idxToEK n l pl)
+private
+def idxToPEK {n}{l}{S : SSn n l}(pl : PermList S) : PEK n :=
+  (Finset.univ : Finset (Fin l.1)).map (idxToEK pl)
 -- PROPERTIES :
 -- The PEC (Cycle) returned has length l
-theorem idxToPEC_Card (S : SSn n l) :
-  ∀(pl : PermList n l S), (idxToPEC n l pl).ncard = l.1 := by
-  intro pl;unfold idxToPEC
-  rw [@Set.ncard_coe_finset]
-  rw [
-    Finset.card_image_of_injective
-    (Finset.univ : Finset (Fin l.1))
-    ((idxToEK n l pl).injective)
-  ]
+private
+theorem idxToPEC_Card {n}{l}(S : SSn n l) :
+  ∀(pl : PermList S), (idxToPEK pl).ncard = l.1 := by
+  intro pl;unfold idxToPEK
+  rw [@Set.ncard_coe_finset, Finset.card_map]
   rw [Finset.card_univ, Fintype.card_fin]
 /- =============================================== -/
 end Conv
+
+/- =============================================== -/
+/- Function from PermList to Cycle Edgesets -/
+def PermListToPEK {n}{l}(S : SSn n l) : PermList S → PEK n := Conv.idxToPEK
+-- PROPERTIES
+-- The PEC (Cycle) returned has length l
+theorem PermListToPEK_Card {n}{l} (S : SSn n l) :
+  ∀(pl : PermList S), ((PermListToPEK S) pl).ncard = l.1 := by
+  intro pl; unfold PermListToPEK;apply Conv.idxToPEC_Card
+/- =============================================== -/
 
 /- =============================================== -/
 /- # Various Theorems #
@@ -373,14 +381,14 @@ end Conv
 /- =============================================== -/
 /- =============================================== -/
 /- PROPERTY of PermList:
-   Card = l! -/
-theorem PermList_univ_card (S : SSn n l) :
-Fintype.card (PermList n l S) = l.1.factorial := by
+   card = l! -/
+theorem PermList_univ_card {n}{l}(S : SSn n l) :
+Fintype.card (PermList S) = l.1.factorial := by
   rw [←Perm_univ_card]; symm
   refine Fintype.card_congr
     (Equiv.ofBijective
-      (Conv.PermToPermList n l S)
-      (Conv.PermToPermList_bij n l S)
+      (Conv.PermToPermList S)
+      (Conv.PermToPermList_bij S)
     )
 /- =============================================== -/
 end Defs
@@ -393,9 +401,149 @@ end Defs
    This section will prove that idxToPEC is a kTo1 mapping from PermLists to Cyclesets.
    (Cycles of length l)
    More exactly that idxToPEC maps 2l PermLists to exactly one PEC, a.k.a Cycle.
-   This section concludes with the theorem that there are exactly l!/2l possibly cycles. -/
+   This section concludes with the theorem that there are exactly l!/2l possible cycles. -/
 /- =============================================== -/
--- [TODO]
+
+/- =============================================== -/
+/- Rotational relation -/
+abbrev RotationalRel {n}{l}{S : SSn n l}(pl1 pl2 : PermList S):=
+  ∃(k : Fin l.1), pl1.1.rotate k.1 = pl2.1
+/- =============================================== -/
+/- RotationalListSetoid -/
+private
+def RotationalListSetoid {n}{l}(S : SSn n l) : Setoid (PermList S) where
+  r := RotationalRel
+  iseqv := {
+    refl := by
+      intro pl; unfold RotationalRel; use ( ⟨0,by have := l.2;linarith⟩ : Fin l.1 )
+      exact List.rotate_zero _
+    symm := by
+      intro pl1 pl2; unfold RotationalRel; intro ⟨k,heq⟩; rw [←heq]
+      by_cases cs : k.1 = 0
+      · rw [cs]
+        use ⟨0,by have:=l.2;omega⟩
+        simp only [List.rotate_zero]
+      · have t0 : 0 < k.1 := by omega
+        use ⟨l.1 - k,by have:=l.2;omega⟩
+        refine List.ext_getElem ?_ ?_
+        · simp only [List.length_rotate]
+        · intro idx h1 h2
+          rw [ List.getElem_rotate, List.getElem_rotate ]
+          simp only [List.length_rotate, Nat.mod_add_mod]
+          congr
+          rw [add_assoc,Nat.sub_add_cancel (by omega), pl1.3,
+            Nat.add_mod_right, ←pl1.3 ,Nat.mod_eq_of_lt h2]
+    trans := by
+      intro pl1 pl2 pl3; unfold RotationalRel; intro ⟨k1,heq1⟩ ⟨k2,heq2⟩
+      rw [←heq2,←heq1]; use ⟨(k1.1 + k2.1)%l.1,by
+        have:=l.2;refine Nat.mod_lt (↑k1 + ↑k2) ?_;omega⟩
+      simp only;
+      rw[List.rotate_rotate pl1.1 k1.1 k2.1]; simp only [←pl1.3]; rw [List.rotate_mod pl1.1]
+  }
+/- =============================================== -/
+/- Equivalence Class of PermLists with RotationalRel -/
+def RotationalList {n}{l}(S : SSn n l) := Quotient (RotationalListSetoid S)
+-- Properties
+
+/- =============================================== -/
+
+/- =============================================== -/
+/- Equivalence Relation Main -/
+abbrev PermListRel {n}{l}{S : SSn n l}(pl1 pl2 : PermList S) :=
+  (PermListToPEK S) pl1 = (PermListToPEK S) pl2
+/- Equivalence Relation' 1 -/
+abbrev RotationRel2 {n}{l}{S : SSn n l}(pl1 pl2 : PermList S):=
+  ∃(k : Fin l.1), pl1.1.rotate k.1 = pl2.1.reverse
+-- PROPERTIES
+-- If pl1 pl2 map to the same edgeset then they have the same length
+theorem PermListRel_imp_eq_len {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S), (PermListRel pl1 pl2) → pl1.1.length = pl2.1.length := by
+  intro pl1 pl2 pre;have t1 := pl1.3; have t2 := pl2.3; simp only [t1,t2]
+-- If pl1 can be rotated by a k < l into pl2 then they will map to the same edgeset.
+theorem PermList_rotate_imp_rel {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S), RotationalRel pl1 pl2 → (PermListRel pl1 pl2) := by
+  unfold PermListRel RotationalRel; intro pl1 pl2 ⟨k,heq⟩
+  ext e
+  constructor
+  · unfold PermListToPEK Conv.idxToPEK Conv.idxToEK
+    simp only [Fin.getElem_fin, Finset.coe_map, Function.Embedding.coeFn_mk, Finset.coe_univ,
+      Set.image_univ, Set.mem_range, forall_exists_index]
+    intro idx h
+    rw [←h]
+    use ( ⟨(l.1 + idx.1 - k.1) % l.1,
+      by refine Nat.mod_lt (l.val + ↑idx - ↑k) ?_;have := l.2;omega⟩)
+    simp only [Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff', Prod.mk.injEq, SetLike.coe_eq_coe,
+      Prod.swap_prod_mk, ←heq]
+    left
+    constructor
+    · rw [List.getElem_rotate]; congr
+      simp only [pl1.3, Nat.mod_add_mod]
+      conv =>
+        enter [1]
+        rw [Nat.sub_add_cancel (by omega), Nat.add_mod_left, Nat.mod_eq_of_lt idx.is_lt]
+    · rw [List.getElem_rotate]
+      simp only [Conv.succ, Function.Embedding.coeFn_mk, Nat.mod_add_mod, pl1.3]
+      conv =>
+        enter [1,2]
+        rw [add_assoc,add_comm 1,←add_assoc,Nat.sub_add_cancel (by omega)]
+      by_cases cs : idx + 1 = l.1
+      · conv => enter [1,2]; rw [add_assoc]
+        simp only [cs, Nat.add_mod_right, Nat.mod_self]
+      · have arith1 : idx + 1 < l.1 := by omega
+        conv => enter[1,2]; rw [add_assoc]
+        simp only [Nat.add_mod_left, Nat.mod_eq_of_lt arith1]
+  · unfold PermListToPEK Conv.idxToPEK Conv.idxToEK
+    simp only [Fin.getElem_fin, Finset.coe_map, Function.Embedding.coeFn_mk, Finset.coe_univ,
+      Set.image_univ, Set.mem_range, forall_exists_index]
+    intro idx h
+    rw [←h]; simp only [Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff', Prod.mk.injEq,
+      SetLike.coe_eq_coe, Prod.swap_prod_mk, ←heq]
+    use ⟨ (idx.1 + k.1) % l.1, by refine Nat.mod_lt _ ?_;have := l.2;omega ⟩
+    left
+    constructor
+    · rw [List.getElem_rotate]; congr; simp only [pl1.3]
+    · rw [List.getElem_rotate]
+      simp only [Conv.succ, Function.Embedding.coeFn_mk, Nat.mod_add_mod, pl1.3]
+      conv => enter[1,2];rw [add_assoc,Nat.add_comm k,←add_assoc];
+-- More general version of the theorem above. Holds for any k : ℕ.
+-- [TODO] optional?
+-- If pl1 can be rotated by a k < l into a reversed pl2
+-- then they will map to the same edgeset.
+theorem PermList_rotate_rev_imp_rel {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S), RotationRel2 pl1 pl2 → (PermListRel pl1 pl2) := by
+  sorry
+-- If pl1 pl2 map to the same edgeset then either
+-- pl1 can be rotated by a k < l into pl2 OR
+-- pl1 can be reversed into pl2
+theorem PermListRel_iff {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S),
+  (PermListRel pl1 pl2) ↔ (RotationalRel pl1 pl2 ∨ RotationRel2 pl1 pl2) := by
+  sorry --[TODO]
+/- =============================================== -/
+
+/- =============================================== -/
+/- Rotational PermList Object -/
+
+/- =============================================== -/
+
+/- =============================================== -/
+/- Bundle relation with proof that it is an equivalence relation -/
+private
+def PermListSetoid {n}{l}(S : SSn n l) : Setoid (PermList S) where
+  r := PermListRel
+  iseqv := {
+    refl := by grind
+    symm := by grind
+    trans := by grind
+  }
+/- =============================================== -/
+/- The Quotient Type of Cycles -/
+def PEC {n}{l} (S : SSn n l) := Quotient (PermListSetoid S)
+/- =============================================== -/
+/- LIFTING FUNCTIONS -/
+/- len of cycle (C) -/
+def PEC_cyc_len {n}{l}{S : SSn n l}(C : PEC S) :=
+  Quotient.lift (fun c ↦ c.1.length) (PermListRel_imp_eq_len S) C
 
 section Probability
 /- =============================================== -/
