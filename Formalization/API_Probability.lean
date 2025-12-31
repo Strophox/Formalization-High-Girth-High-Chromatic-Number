@@ -2,13 +2,16 @@ import Mathlib
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
+variable {α : Type*}
 
+namespace API_ℙ
 open MeasureTheory
 open scoped ENNReal NNReal
-
-variable {α : Type*}
-namespace API_ℙ
+/- =============================================== -/
 /- # DEFS # -/
+/- =============================================== -/
+
+/- =============================================== -/
 /- Values -/
 structure ℙval where
   val   : ℝ≥0
@@ -19,31 +22,41 @@ structure Nval where
 -- mark as variables
 variable (p : ℙval)
 variable (n : Nval)
+/- =============================================== -/
 
+/- =============================================== -/
 /- Graph types and Graph constants -/
 abbrev Fingraph := SimpleGraph (Fin n.1) -- Our graph type
 abbrev KGraph : Fingraph n := SimpleGraph.completeGraph (Fin n.1) -- A complete Graph
+/- =============================================== -/
 
+/- =============================================== -/
 /- Vertex Set -/
 abbrev VK := Fin n.1
--- Properties :
+-- PROPERTIES
 instance : Fintype (VK n) := by
   exact Fin.fintype n.val
 instance : DecidableEq (VK n) := by
   exact instDecidableEqFin n.val
 instance VK_nonempty : Nonempty (VK n) := by
   exact Fin.pos_iff_nonempty.mp n.2
+/- =============================================== -/
 
+/- =============================================== -/
 /- Vertex Power Set -/
 abbrev PVK := Set (Fin n.1)
-noncomputable instance : Fintype (PVK n) := by
+-- PROPERTIES
+noncomputable
+instance : Fintype (PVK n) := by
   exact Fintype.ofFinite ↑(PVK n)
-noncomputable instance (I : PVK n) : Fintype I := by
+noncomputable
+instance (I : PVK n) : Fintype I := by
   exact Fintype.ofFinite ↑I
--- Properties :
-instance PVK_nonempty : Nonempty (PVK n) := by
+instance : Nonempty (PVK n) := by
   exact instNonemptyOfInhabited
+/- =============================================== -/
 
+/- =============================================== -/
 /- Complete EdgeSet -/
 abbrev EK := (KGraph n).edgeSet
 -- Properties :
@@ -57,7 +70,9 @@ theorem mem_EK_iff : ∀(n : Nval),∀(a b), s(a, b) ∈ EK n ↔ a ≠ b := by 
   intros n a b;
   simp only [SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq, ne_eq]
 }
+/- =============================================== -/
 
+/- =============================================== -/
 /- Complete EdgePowerSet -/
 abbrev PEK := Set (EK n)
 -- Properties :
@@ -65,7 +80,9 @@ noncomputable instance : Fintype (PEK n) := by
   exact Set.fintype
 noncomputable instance : DecidableEq (PEK n) := by
   exact Classical.typeDecidableEq (PEK n)
+/- =============================================== -/
 
+/- =============================================== -/
 /- Sets of Edgesets -/
 abbrev PPEK := Set (PEK n)
 -- Properties :
@@ -75,7 +92,9 @@ noncomputable instance (E': PPEK n): Fintype E' := by
   exact Fintype.ofFinite ↑E'
 noncomputable instance PPEK_Countable (E': PPEK n) : Set.Countable E' := by
   exact Set.to_countable E'
+/- =============================================== -/
 
+/- =============================================== -/
 /- Graph Sample Space ⇒
 The universe of functions Edges -> Bool -/
 abbrev ΩK := (EK n) → Bool
@@ -84,33 +103,46 @@ noncomputable instance : Fintype (ΩK n) := by
   exact Pi.instFintype
 instance : DiscreteMeasurableSpace (ΩK n) := by
   exact MeasurableSingletonClass.toDiscreteMeasurableSpace
+/- =============================================== -/
 
+/- =============================================== -/
 /- Bernoulli Measure ⇒
 Cast from a bernoulli PMF -/
 noncomputable def μ_bernoulli : Measure Bool :=
   (PMF.bernoulli p.1 p.2).toMeasure
   deriving IsProbabilityMeasure
+/- =============================================== -/
 /- Defines a Measure over sample space ΩK by taking the product
    of the bernoulli measures over all edges. -/
 noncomputable abbrev EKμ : Measure (ΩK n) :=
   Measure.pi fun (_ : EK n) ↦ (μ_bernoulli p)
 noncomputable instance EKμIsProbMeas : IsProbabilityMeasure (EKμ p n) := by
   exact Measure.pi.instIsProbabilityMeasure fun _ ↦ μ_bernoulli p
+/- =============================================== -/
 /- Define a PMF over ΩK -/
 noncomputable def EKpmf : PMF (ΩK n) :=
   (EKμ p n).toPMF
+/- =============================================== -/
 
+/- =============================================== -/
 /- # PROBABILITY # -/
+/- =============================================== -/
+
+/- =============================================== -/
 noncomputable def F_EsubG (E : PEK n):=
   { (f : ΩK n) | ∀(e : E), f e }
 noncomputable def Pr_EsubG (E : PEK n) : ℝ :=
   (EKμ p n).real (F_EsubG n E)
+/- =============================================== -/
 
+/- =============================================== -/
 noncomputable def F_EdisjG (E : PEK n):=
   { (f : ΩK n) | ∀(e : E), f e = false }
 noncomputable def Pr_EdisjG (E : PEK n) : ℝ :=
   (EKμ p n).real (F_EdisjG n E)
+/- =============================================== -/
 
+/- =============================================== -/
 /- Pr[E' ⊆ E(G)] = p^|E'| -/
 @[scoped simp 10]
 theorem PrE_subs (E : PEK n):
@@ -165,7 +197,9 @@ theorem PrE_subs (E : PEK n):
     norm_cast; congr
     exact Eq.symm (Set.ncard_eq_toFinset_card' E)
   }
+/- =============================================== -/
 
+/- =============================================== -/
 @[scoped simp 10]
 /- Pr[E' ∩ E(G) = ∅] = (1-p)^|E'| -/
 theorem PrE_disj (E : PEK n):
@@ -223,13 +257,17 @@ Pr_EdisjG p n E = ((1 - p.1) : ℝ)^(E.ncard) := by {
     · norm_num;exact rfl
   exact Eq.symm (Set.ncard_eq_toFinset_card' E)
 }
+/- =============================================== -/
 
+/- =============================================== -/
 @[scoped simp 10]
 /- Pr[e ∈ E(G)] = p -/
 theorem Pre_exists (e : EK n) :
 Pr_EsubG p n {e} = p.val := by
   rw [(PrE_subs p n {e})]; simp only [Set.ncard_singleton, pow_one]
+/- =============================================== -/
 
+/- =============================================== -/
 /- Union bound lemma 1 (Inclusion)-/
 theorem PrE_subs_UB (E' : PPEK n) :
   (EKμ p n).real (⋃(E ∈ E'.toFinset),(F_EsubG n E)) ≤ ∑(E ∈ E'.toFinset), Pr_EsubG p n E := by
@@ -243,7 +281,7 @@ theorem PrE_subs_UB (E' : PPEK n) :
     not_false_eq_true]}
 
   refine MeasureTheory.measure_biUnion_finset_le E'.toFinset (F_EsubG n)
-
+/- =============================================== -/
 /- Union bound lemma 2 (Exclusion)-/
 theorem PrE_disj_UB (E' : PPEK n) :
   (EKμ p n).real (⋃(E ∈ E'.toFinset),(F_EdisjG n E)) ≤ ∑(E ∈ E'.toFinset), Pr_EdisjG p n E := by
@@ -257,5 +295,6 @@ theorem PrE_disj_UB (E' : PPEK n) :
     not_false_eq_true]}
 
   refine MeasureTheory.measure_biUnion_finset_le E'.toFinset (F_EdisjG n)
+/- =============================================== -/
 
 end API_ℙ

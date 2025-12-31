@@ -3,21 +3,25 @@ import Formalization.API_Probability
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
-
 variable {α : Type*}
+
+namespace API_𝕀
 open API_ℙ
 open scoped API_ℙ
 variable (n : Nval)
 variable (p : ℙval)
 
-namespace API_𝕀
-
+/- =============================================== -/
 /- # DEFS # -/
-/- A finite set of sets of size 2 -/
+/- =============================================== -/
+
+/- =============================================== -/
+/- A finite set of sets with cardinality 2 -/
 structure PairSet where
 val : Finset (Finset (Fin n.1))
 proof : ∀i, i ∈ val → i.card = 2
--- Properties
+-- PROPERTIES
+-- finite
 instance : Fintype (PairSet n) := by
   let T := { X : (Finset (Finset (Fin n.1))) // ∀i, i ∈ X → i.card = 2};
   have : Fintype T := by
@@ -29,8 +33,9 @@ instance : Fintype (PairSet n) := by
     right_inv := by intro b; cases b;rfl
   }
   exact Fintype.ofEquiv T bij
-
-/- Embedding (Injective function) that maps a set of size 2 to an edge -/
+/- =============================================== -/
+/- =============================================== -/
+/- Embedding (Injective function) that maps a PairSet to an edge -/
 private noncomputable
 def S2_mapTo_EK (I : (PairSet n)) : I.1 ↪ (EK n) :=
   ⟨--Mapping
@@ -92,38 +97,45 @@ def S2_mapTo_EK (I : (PairSet n)) : I.1 ↪ (EK n) :=
     · grind only
   ⟩
 -- Properties
+-- Is injective
 @[scoped grind! .]
 instance S2_mapTo_EK_inj (I : PairSet n):
   Function.Injective (S2_mapTo_EK n I) := by
   exact Function.Embedding.injective (S2_mapTo_EK n I)
+/- =============================================== -/
 
-/- Set of all pairs from a PVK I-/
+/- =============================================== -/
+/- Set of all pairs from an Vertex Subset -/
 private noncomputable
 abbrev SS2 (I : PVK n) : PairSet n := ⟨I.toFinset.powersetCard 2,by
   intro I' h; simp_all only [Finset.mem_powersetCard,Set.subset_toFinset]⟩
--- Properties :
-private noncomputable -- SS2 is Fintype
+-- Properties
+-- finite
+private noncomputable
 instance (I : PVK n) : Fintype ↑(SS2 n I).1 := by
   unfold SS2
   exact (
     { val := Finset.powersetCard 2 (Set.toFinset I), proof := _ } : PairSet n
   ).val.fintypeCoeSort
 -- Cardinality (I.E cardinality doesn't change after mapping)
-lemma S2_mapTo_EK_Card (I : PairSet n):
+private lemma S2_mapTo_EK_Card (I : PairSet n):
   (I.1.attach.image (S2_mapTo_EK n I)).card = I.1.card := by {
     have := Finset.card_image_of_injective I.1.attach
       (f := (S2_mapTo_EK n I).1) (S2_mapTo_EK n I).2
     simp_all only [S2_mapTo_EK , Finset.card_empty, Nat.rec_zero,
       Finset.card_attach, Function.Embedding.coeFn_mk]
   }
+/- =============================================== -/
 
-/- Complete Edgeset of a given Vertex set -/
+/- =============================================== -/
+/- Complete Edgeset of a given Vertex SubSet -/
 def EK_sub (I : PVK n) : PEK n :=
   let I' := SS2 n I
   -- The complete edgeset on vertexset I
   I'.1.attach.image (S2_mapTo_EK n I')
--- Properties:
-noncomputable -- Is Finite
+-- Properties
+-- Is Finite
+noncomputable
 instance (I : PVK n) : Fintype (EK_sub n I) := by
   exact Fintype.ofFinite ↑(EK_sub n I)
 -- Cardinality of a complete edgeset on a vertex set is (n choose 2)
@@ -148,38 +160,45 @@ theorem EK_sub_card (I : PVK n) : (EK_sub n I).ncard = Nat.choose I.ncard 2 := b
     refine S2_mapTo_EK_Card n (SS2 n I)
     }
   }
+/- =============================================== -/
 
 section IndSets
+/- =============================================== -/
 /- # INDSETS # -/
+/- =============================================== -/
 
-/- Have a bounded size value -/
+/- =============================================== -/
+/- A bounded size value -/
 structure SZval where
-val : ℕ
-proof : val ≤ n.1
+  val : ℕ
+  proof : val ≤ n.1
 variable (sz : SZval n)
+/- =============================================== -/
 
+/- =============================================== -/
 /- The set of all possible vertexsets of size sz -/
 noncomputable
 abbrev IndSets_ofsz := (Set.univ : Set (VK n)).toFinset.powersetCard sz.1
 -- Properties
+-- finite
 noncomputable
 instance : Fintype (IndSets_ofsz n sz) := by
   exact (IndSets_ofsz n sz).fintypeCoeSort
--- There are n choose sz such vertex sets.
-@[local grind =]
+-- card = n choose sz
 theorem IndSets_ofsz_card :
   (IndSets_ofsz n sz).card = n.1.choose sz.1 := by
   unfold IndSets_ofsz
   simp only [Set.toFinset_univ, Finset.card_powersetCard, Finset.card_univ, Fintype.card_fin]
--- Each memeber of that set has size sz
-@[local grind =]
+-- mem card = sz
 theorem IndSets_ofsz_mem_card :
   ∀(I : (IndSets_ofsz n sz)), I.1.card = sz.1 := by
   {
     intros I;unfold IndSets_ofsz at I; obtain ⟨I,ip⟩ := I; simp only
     grind only [= Finset.mem_powersetCard]
   }
+/- =============================================== -/
 
+/- =============================================== -/
 /- All independent sets in a given graph -/
 def IndSetsG (f : ΩK n) :=
   let noedge (I : PVK n)(v1 v2 : I)(h : v1 ≠ v2) :=
@@ -187,10 +206,12 @@ def IndSetsG (f : ΩK n) :=
   let isInd (I : PVK n):= ∀(v1 v2 : I), (h : v1 ≠ v2) → noedge I v1 v2 h
   {(I : PVK n) | isInd I}
 -- Properties
-noncomputable -- Is finite
+-- finite
+noncomputable
 instance (f : ΩK n) : Fintype (IndSetsG n f) := by
   exact Fintype.ofFinite ↑(IndSetsG n f)
-noncomputable -- Its members are also finite
+-- mem finite
+noncomputable
 instance (f : ΩK n)(I : IndSetsG n f) : Fintype I := by
   exact instFintypeElemFinVal n ↑I
 -- There will always exist an Independent set
@@ -199,7 +220,11 @@ instance (f : ΩK n) : Inhabited (IndSetsG n f) := by
     Set.mem_empty_iff_false, IsEmpty.forall_iff, implies_true]
 instance (f : ΩK n) : Nonempty (IndSetsG n f) := by
   exact instNonemptyOfInhabited
+/- =============================================== -/
 
+/- =============================================== -/
+/- # MAXIMAL INDSETS # -/
+/- =============================================== -/
 /- There always exists a maximal independent set in a graph -/
 private def MaxIndSetSpec (f : ΩK n) :
   ∃(Imax : PVK n),
@@ -216,56 +241,65 @@ def MaxIndSet (f : ΩK n) : PVK n := Classical.choose (MaxIndSetSpec n f)
 def MaxIndSetP (f : ΩK n) := Classical.choose_spec (MaxIndSetSpec n f)
 -- Properties:
 -- [TODO]
+/- =============================================== -/
 
-/- The size of a maximal independent set -/
+/- =============================================== -/
+/- The size of a maximal independent set i.e. α(G) -/
 noncomputable
 def αG (f : ΩK n) : ℕ := (MaxIndSet n f).ncard
 -- Properties:
 -- [TODO]
+/- =============================================== -/
 
 end IndSets
 
 section Probability
 open MeasureTheory
 open scoped ENNReal NNReal
+/- =============================================== -/
 /- # PROBABILITY #-/
+/- =============================================== -/
 
-/- Probability of a specific Independent set appearing in a Graph -/
+/- =============================================== -/
+/- Probability of an Independent set I appearing in a Graph -/
 noncomputable def PrI (I : PVK n) : ℝ := Pr_EdisjG p n (EK_sub n I)
 -- Properties
--- Evaluates to (1-p)^(|I|.choose 2)
+-- eval = (1-p)^(|I|.choose 2)
 @[scoped grind =]
 theorem PrI_val (I : PVK n) : (PrI n p I) = (1-p.1)^(Nat.choose I.ncard 2) := by {
   unfold PrI; rw [PrE_disj]; congr; grind only [= EK_sub_card]
 }
+/- =============================================== -/
 
-/- # The final stretch # -/
-/- The Probabilities we need -/
--- Exact probability
+/- =============================================== -/
+/- The final theorem -/
+/- =============================================== -/
+-- DEF: Exact probability
 private noncomputable
 def PrI_ofsz (sz : SZval n) :=
   (EKμ p n).real (⋃(I ∈ (IndSets_ofsz n sz)),(F_EdisjG n (EK_sub n I)))
--- Bounded probability
+-- DEF: Bounded probability
 private noncomputable
 def bounded_PrI_ofsz (sz : SZval n) :=
   ∑(I ∈ (IndSets_ofsz n sz)), Pr_EdisjG p n (EK_sub n I)
 
-/- A helper lemma for the final step of the start of part 2. -/
-lemma bounded_PrI_ofsz_val (sz : SZval n) :
+/- Eval of Bounded Probability i.e. n choose sz * (1 - p)^(sz choose 2)
+   A helper lemma for the final step of the start of part 2. -/
+private lemma bounded_PrI_ofsz_val (sz : SZval n) :
   bounded_PrI_ofsz n p sz = (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
   unfold bounded_PrI_ofsz
   simp [EK_sub_card]
   trans ∑ x ∈ IndSets_ofsz n sz, (1 - ↑p.val) ^ sz.val.choose 2
-  · apply Finset.sum_congr rfl -- <--Gemini pulled this out of somewhere
+  · apply Finset.sum_congr rfl
     intros x hx
     have t : x.card = sz.1 := by exact IndSets_ofsz_mem_card n sz ⟨x,hx⟩
     rw [t]
   · rw [Finset.sum_const]
     simp only [nsmul_eq_mul] -- Fixes ℕ * ℝ typing issues
     rw [IndSets_ofsz_card]
-/- We get that the probability of a graph containing at least one independent set of size sz is
+/- The probability of a graph containing at least one independent set of size sz is
    upper bounded by !!! (n choose sz) * (1 - p)^(sz choose 2) !!!
-   This is the first step of part 2 YIPPIE!! (we can handwave the α-part) -/
+   Note that this is equivalent to the Probability that [α(G) ≥ sz]. -/
 theorem PrI_ofsz_UBval (sz : SZval n):
   (PrI_ofsz n p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
   let IndSZ := (IndSets_ofsz n sz);
@@ -284,6 +318,7 @@ theorem PrI_ofsz_UBval (sz : SZval n):
   refine MeasureTheory.measure_biUnion_finset_le --Union Bound
     (IndSets_ofsz n sz)
     (fun I ↦ F_EdisjG n (EK_sub n I))
-
+/- =============================================== -/
+/- This is the first step of part 2 YIPPIE!! -/
 end Probability
 end API_𝕀

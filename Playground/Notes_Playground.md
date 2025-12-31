@@ -357,4 +357,60 @@ noncomputable def ℙαG_ge (num : ℕ)(pre : n > 0) : ℝ≥0∞ :=
   meas {f : (ΩK n) | αG n f pre ≥ num}
 /- Some theorems about that -/
 -- @Lucas maybe
+
+namespace Theorems
+
+/- # Theorems # -/
+
+/- # ..Cycles # -/
+/- TODO: Prove that there are exactly n choose k cycles of length l in a graph of size n
+   NOTE that l is forced to be ≥3 !! This might be extremely hard :( -/
+theorem CycleOfL_card : (CycleOfL n l).toFinset.card =
+  Nat.choose n.1 l.1 * (Nat.factorial l.1) / (2 * l.1) := by sorry
+
+/- # ..Probability i.e. 𝔼/ℙ # -/
+/- The expected number of cycles with length l-/
+noncomputable def E_CycleOfL : ℝ := ∑(C : CycleOfL n l), Pr_EsubG p n (Cycle_toEdgeset n C)
+
+/- TODO: Prove that 𝔼[#cycles with length l] = n choose k * p^l -/
+theorem Cycset_eq_card :
+  E_CycleOfL n p l = Nat.choose n.1 l.1 * (Nat.factorial l.1) / (2 * l.1) * p.1^l.1
+  := by sorry
+
+end Theorems
+
+/- Equivalence relation -/
+@[scoped grind]
+def PermEq (P1 P2 : Permutation n) :=
+  P1.1 = P2.1 ∨ (P2.1 ∘ P1.1 = id ∧ P1.1 ∘ P2.1 = id)
+-- PROPERTIES
+
+/- Equivalence class of cycles -/
+-- declare an instance of Setoid
+private
+instance PermutationSetoid : Setoid (Permutation n) where
+  r := PermEq n
+  iseqv := {
+    refl := by grind only [PermEq];
+    symm := by
+      intros P1 P2 heq
+      unfold PermEq at *; simp_all only [toFun_as_coe]
+      obtain heq|heq := heq
+      · left; simp only [heq]
+      · right; simp_all only [and_self]
+    trans := by
+      intros P1 P2 P3 heq1 heq2
+      unfold PermEq at *; simp_all only [toFun_as_coe]
+      obtain heq1|heq1 := heq1
+      · obtain heq2|heq2 := heq2
+        · left;simp only [heq1, heq2]
+        · right;rwa [←heq1] at heq2
+      · obtain heq2|heq2 := heq2
+        · right;rwa [heq2] at heq1
+        · left;cases heq1;cases heq2
+          rename_i hl hr hl' hr'
+          exact Eq.symm (Function.LeftInverse.eq_rightInverse (congrFun hl') (congrFun hl))
+  }
+-- declare the equivalance class type
+def Cycle := Quotient (PermutationSetoid n)
 ```
