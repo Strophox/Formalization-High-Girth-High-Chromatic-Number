@@ -557,11 +557,8 @@ theorem RotationalList_univ_card {n}{l}(S : SSn n l) :
   have h : ∀b ∈ (Finset.univ : Finset (RotationalList S)),
     (fun b ↦ {a | ⟦a⟧ = b}.toFinset.card) b = (fun _ ↦ l.1) b := by
       intro b; simp only [Finset.mem_univ, Set.toFinset_setOf, forall_const]
-      convert (RotationalList_mem_card' S b)
-      exact
-        Eq.symm
-          (Fintype.card_ofFinset (Finset.filter (Membership.mem {pl | ⟦pl⟧ = b}) Finset.univ)
-            (Subtype.fintype._proof_1 (Membership.mem {pl | ⟦pl⟧ = b})))
+      convert (RotationalList_mem_card S b)
+      exact Eq.symm (Set.toFinset_setOf fun x ↦ ⟦x⟧ = b)
   have bruh :
     (Finset.univ : Finset (RotationalList S)) = (Finset.univ : Finset (RotationalList S)) :=
     by rfl
@@ -571,8 +568,9 @@ theorem RotationalList_univ_card {n}{l}(S : SSn n l) :
   rw [Nat.div_self, Nat.mul_one]
   have := l.2; linarith
 /- =============================================== -/
+/- =============================================== -/
 /- map Rotational List to PEK (Lifting function) -/
-def toPEK {n}{l}{S : SSn n l}(rl : RotationalList S) :=
+def RotationalListToPEK {n}{l}{S : SSn n l}(rl : RotationalList S) :=
   Quotient.lift
   ( fun pl ↦ (PermListToPEK S) pl )
   ( by
@@ -687,7 +685,7 @@ theorem reverse_ne {n}{l}{S : SSn n l}(rl : RotationalList S) :
 
 /- =============================================== -/
 /- Cycle equivalence relation -/
-abbrev PermListRel {n}{l}{S : SSn n l}(rl1 rl2 : RotationalList S) :=
+abbrev CycleRel {n}{l}{S : SSn n l}(rl1 rl2 : RotationalList S) :=
   rl1 = rl2 ∨ ∀pl, Quotient.mk (RotationalListSetoid S) pl = rl1 ↔
   Quotient.mk (RotationalListSetoid S) ⟨
           pl.1.reverse,
@@ -698,12 +696,12 @@ abbrev PermListRel {n}{l}{S : SSn n l}(rl1 rl2 : RotationalList S) :=
 /- Cycle Setoid -/
 private
 def CycleSetoid {n}{l}(S : SSn n l) : Setoid (RotationalList S) where
-  r := PermListRel
+  r := CycleRel
   iseqv := {
     refl := by
-      intro rl; unfold PermListRel; left; rfl
+      intro rl; unfold CycleRel; left; rfl
     symm := by
-      intro rl1 rl2; unfold PermListRel
+      intro rl1 rl2; unfold CycleRel
       rintro (pre|pre)
       · left; exact pre.symm
       · right; intro pl
@@ -722,6 +720,9 @@ abbrev Cycle {n}{l}(S : SSn n l) := Quotient (CycleSetoid S)
 noncomputable
 instance {n}{l}(S : SSn n l) : Fintype (Cycle S) := by
   exact Fintype.ofFinite (Cycle S)
+noncomputable
+instance {n}{l}(S : SSn n l) : DecidableEq (Cycle S) := by
+  exact Classical.typeDecidableEq (Cycle S)
 -- mem card = 2
   -- embedding from bool to Rotational List
   noncomputable
@@ -732,7 +733,7 @@ instance {n}{l}(S : SSn n l) : Fintype (Cycle S) := by
       if b then ⟨C.out,by simp only [Set.mem_setOf_eq, Quotient.out_eq]⟩
            else ⟨reverse (C.out),by
              simp only [Quotient.mk_eq_iff_out, reverse, Set.mem_setOf_eq]
-             simp only [HasEquiv.Equiv,CycleSetoid,PermListRel]
+             simp only [HasEquiv.Equiv,CycleSetoid,CycleRel]
              right
              intro pl
              constructor
@@ -791,7 +792,7 @@ instance {n}{l}(S : SSn n l) : Fintype (Cycle S) := by
       ↓reduceIte]
     simp only [Set.mem_setOf_eq] at hp
     rw [Quotient.mk_eq_iff_out] at hp
-    simp only [HasEquiv.Equiv, CycleSetoid,PermListRel] at hp
+    simp only [HasEquiv.Equiv, CycleSetoid,CycleRel] at hp
     obtain hp|hp := hp
     · right; simp only [Subtype.mk.injEq]
       exact id (Eq.symm hp)
@@ -823,11 +824,56 @@ theorem Cycle_mem_card' {n}{l}(S : SSn n l) :
   rw [← t]; symm
   refine Finset.card_eq_of_equiv_fintype ?_
   refine Equiv.ofBijective (boolToCycle S ⟦rl'⟧) (boolToCycle_bij S ⟦rl'⟧)
+theorem Cycle_mem_card {n}{l}(S : SSn n l) :
+∀(C : Cycle S),
+  {rl : RotationalList S | Quotient.mk (CycleSetoid S) rl = C}.toFinset.card = 2 := by
+  intro rl
+  rw [@Set.toFinset_card];exact Cycle_mem_card' S rl
 -- card = l! / (2l)
 theorem Cycle_univ_card {n}{l}(S : SSn n l) :
-  Fintype.card (RotationalList S) = l.1.factorial / (2*l.1) := by
-  sorry
+  Fintype.card (Cycle S) = l.1.factorial / (l.1 * 2) := by
+  have mapsTo : Set.MapsTo
+    (Quotient.mk (CycleSetoid S) )
+    (Finset.univ : Finset (RotationalList S))
+    (Finset.univ : Finset (Cycle S)) := by
+    simp only [Finset.coe_univ, Set.mapsTo_univ_iff, Set.mem_univ, implies_true]
+  have card := Finset.card_eq_sum_card_fiberwise mapsTo
+  rw [show Finset.univ.card = l.1.factorial / l.1 from
+    by simp only [Finset.card_univ]; rw [RotationalList_univ_card]
+    ] at card
+  have h : ∀b ∈ (Finset.univ : Finset (Cycle S)),
+    (fun b ↦ {a | ⟦a⟧ = b}.toFinset.card) b = (fun _ ↦ 2) b := by
+    intro C bp
+    simp only [Set.toFinset_setOf]
+    convert (Cycle_mem_card S C)
+    exact Eq.symm (Set.toFinset_setOf fun x ↦ ⟦x⟧ = C)
+  have bruh :
+    (Finset.univ : Finset (Cycle S)) = (Finset.univ : Finset (Cycle S)) :=
+  by rfl
+  have sumcong := Finset.sum_congr (bruh) (h)
+  simp only [Set.toFinset_setOf, Finset.sum_const, Finset.card_univ, smul_eq_mul] at sumcong
+  rw [sumcong] at card; rw [←Nat.div_div_eq_div_mul]; symm
+  rw [Nat.div_eq_iff_eq_mul_left]
+  · rw [card]
+  -- cleaning up some stragglers
+  · linarith
+  · omega
 /- =============================================== -/
+/- =============================================== -/
+/- Maps cycles to their respective Edgesets-/
+def CycleToPEK {n}{l}{S : SSn n l}(C : Cycle S) :=
+Quotient.lift
+  ( fun (rl : RotationalList S) ↦ RotationalListToPEK rl )
+  ( by
+    intro rl1 rl2 heq
+    simp only [HasEquiv.Equiv,CycleSetoid,CycleRel] at heq
+    simp only [RotationalListToPEK, PermListToPEK]
+    simp only [Conv.idxToPEK,Conv.idxToEK]
+    sorry
+  )
+  C
+/- =============================================== -/
+
 
 section Probability
 /- =============================================== -/
