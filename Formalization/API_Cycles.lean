@@ -895,7 +895,8 @@ theorem CycleLen_eval {n}{l}{S : SSn n l}(C : Cycle S) :
   induction' rl using Quotient.ind with pl
   rw [Quotient.lift_mk]
   exact pl.3
-/- Maps cycles to their respective Edgesets-/
+/- Maps cycles to their respective Edgesets
+   (PAIN) -/
 def CycleToPEK {n}{l}{S : SSn n l}(C : Cycle S) :=
 Quotient.lift
   ( fun rl ↦ RotationalListToPEK rl )
