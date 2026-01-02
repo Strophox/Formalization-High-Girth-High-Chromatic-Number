@@ -275,7 +275,7 @@ theorem PrI_val (I : PVK n) : (PrI n p I) = (1-p.1)^(Nat.choose I.ncard 2) := by
 /- The final theorem -/
 /- =============================================== -/
 -- DEF: Exact probability
-private noncomputable
+noncomputable
 def PrI_ofsz (sz : SZval n) :=
   (EKμ p n).real (⋃(I ∈ (IndSets_ofsz n sz)),(F_EdisjG n (EK_sub n I)))
 -- DEF: Bounded probability
@@ -300,7 +300,7 @@ private lemma bounded_PrI_ofsz_val (sz : SZval n) :
 /- The probability of a graph containing at least one independent set of size sz is
    upper bounded by !!! (n choose sz) * (1 - p)^(sz choose 2) !!!
    Note that this is equivalent to the Probability that [α(G) ≥ sz]. -/
-theorem PrI_ofsz_UBval (sz : SZval n):
+theorem PrI_ofsz_UBval {n}(sz : SZval n):
   (PrI_ofsz n p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
   let IndSZ := (IndSets_ofsz n sz);
   rw [←bounded_PrI_ofsz_val]

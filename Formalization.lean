@@ -1,11 +1,22 @@
 import Mathlib.Combinatorics.SimpleGraph.Girth
 import Mathlib.Combinatorics.SimpleGraph.Coloring
+import Formalization.API_Probability
+import Formalization.API_IndSets
 
 --import Formalization.Probability
 
 set_option autoImplicit false
 -- set_option tactic.hygienic false
 set_option linter.style.longLine false
+
+open API_ℙ API_𝕀 Real
+open scoped API_ℙ API_𝕀
+
+lemma P2_1 (n : Nval) (p : ℙval) (sz : SZval n) :
+  (PrI_ofsz n p sz) ≤ (exp 0) / (sz.val.factorial) := by
+  grw [PrI_ofsz_UBval]
+  -- Less Go (exp 1) is Eulers Number
+  sorry
 
 theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
     ∃ (n : ℕ) (G : SimpleGraph (Fin n)), G.egirth > l ∧ G.chromaticNumber > k := by

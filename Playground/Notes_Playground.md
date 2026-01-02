@@ -199,6 +199,8 @@ example:
 
 ```lean
 
+Discarded Ideas are here
+
 -- # DEFINING 'EDGES' #
 -- 'Edges' is the underlying measure of our random Graph formalization and is foundational.
 -- -/
@@ -413,4 +415,165 @@ instance PermutationSetoid : Setoid (Permutation n) where
   }
 -- declare the equivalance class type
 def Cycle := Quotient (PermutationSetoid n)
+
+/-
+abbrev PermListRel {n}{l}{S : SSn n l}(pl1 pl2 : PermList S) :=
+  (PermListToPEK S) pl1 = (PermListToPEK S) pl2
+-- PROPERTIES
+-- If pl1 pl2 map to the same edgeset then they have the same length
+theorem PermListRel_imp_eq_len {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S), (PermListRel pl1 pl2) → pl1.1.length = pl2.1.length := by
+  intro pl1 pl2 pre;have t1 := pl1.3; have t2 := pl2.3; simp only [t1,t2]
+-- If pl1 can be rotated by a k < l into pl2 then they will map to the same edgeset.
+theorem PermList_rotate_imp_rel {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S), RotationalRel pl1 pl2 → (PermListRel pl1 pl2) := by
+  unfold PermListRel RotationalRel; intro pl1 pl2 ⟨k,heq⟩
+  ext e
+  constructor
+  · unfold PermListToPEK Conv.idxToPEK Conv.idxToEK
+    simp only [Fin.getElem_fin, Finset.coe_map, Function.Embedding.coeFn_mk, Finset.coe_univ,
+      Set.image_univ, Set.mem_range, forall_exists_index]
+    intro idx h
+    rw [←h]
+    use ( ⟨(l.1 + idx.1 - k.1) % l.1,
+      by refine Nat.mod_lt (l.val + ↑idx - ↑k) ?_;have := l.2;omega⟩)
+    simp only [Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff', Prod.mk.injEq, SetLike.coe_eq_coe,
+      Prod.swap_prod_mk, ←heq]
+    left
+    constructor
+    · rw [List.getElem_rotate]; congr
+      simp only [pl1.3, Nat.mod_add_mod]
+      conv =>
+        enter [1]
+        rw [Nat.sub_add_cancel (by omega), Nat.add_mod_left, Nat.mod_eq_of_lt idx.is_lt]
+    · rw [List.getElem_rotate]
+      simp only [Conv.succ, Function.Embedding.coeFn_mk, Nat.mod_add_mod, pl1.3]
+      conv =>
+        enter [1,2]
+        rw [add_assoc,add_comm 1,←add_assoc,Nat.sub_add_cancel (by omega)]
+      by_cases cs : idx + 1 = l.1
+      · conv => enter [1,2]; rw [add_assoc]
+        simp only [cs, Nat.add_mod_right, Nat.mod_self]
+      · have arith1 : idx + 1 < l.1 := by omega
+        conv => enter[1,2]; rw [add_assoc]
+        simp only [Nat.add_mod_left, Nat.mod_eq_of_lt arith1]
+  · unfold PermListToPEK Conv.idxToPEK Conv.idxToEK
+    simp only [Fin.getElem_fin, Finset.coe_map, Function.Embedding.coeFn_mk, Finset.coe_univ,
+      Set.image_univ, Set.mem_range, forall_exists_index]
+    intro idx h
+    rw [←h]; simp only [Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff', Prod.mk.injEq,
+      SetLike.coe_eq_coe, Prod.swap_prod_mk, ←heq]
+    use ⟨ (idx.1 + k.1) % l.1, by refine Nat.mod_lt _ ?_;have := l.2;omega ⟩
+    left
+    constructor
+    · rw [List.getElem_rotate]; congr; simp only [pl1.3]
+    · rw [List.getElem_rotate]
+      simp only [Conv.succ, Function.Embedding.coeFn_mk, Nat.mod_add_mod, pl1.3]
+      conv => enter[1,2];rw [add_assoc,Nat.add_comm k,←add_assoc];
+-- If pl1 can be reversed into pl2 then they will map to the same edgeset.
+theorem PermList_reversion_imp_rel {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S), ReversionRel pl1 pl2 → (PermListRel pl1 pl2) := by
+  intro pl1 pl2; unfold PermListRel ReversionRel; intro rel
+  unfold PermListToPEK Conv.idxToPEK Conv.idxToEK
+  ext e
+  simp only [Fin.getElem_fin, Finset.coe_map, Function.Embedding.coeFn_mk, Finset.coe_univ,
+    Set.image_univ, Set.mem_range]
+  have := l.2
+  constructor
+  · intro ⟨k,heq⟩; simp only [←rel]; rw[←heq]
+    unfold Conv.succ; simp only [Function.Embedding.coeFn_mk, Subtype.mk.injEq, Sym2.eq,
+      Sym2.rel_iff', Prod.mk.injEq, SetLike.coe_eq_coe, Prod.swap_prod_mk]
+    use ⟨(l.1 + l.1 - 1 - (k + 1)) % l.1, by
+      refine Nat.mod_lt (l.val + l.val - 1 - (↑k + 1)) ?_; omega ⟩;right
+    simp only [List.getElem_reverse, pl1.3]
+    constructor
+    · congr
+      by_cases cs : k.1 = l.1 -1
+      · rw[cs]
+        rw [Nat.sub_add_cancel (by omega), Nat.mod_self]
+        conv =>
+          enter [1]
+          rw [Nat.sub_add_comm (by linarith),Nat.add_sub_cancel]
+        simp only [Nat.self_sub_mod, tsub_self]
+      · have t : k + 1 ≤ (l.1 - 1) := by omega
+        conv =>
+          enter [1]
+          rw [Nat.sub_add_comm (by omega),Nat.sub_add_comm (by omega)]
+          rw [Nat.add_mod_right, Nat.mod_eq_of_lt (by omega), Nat.sub_sub_self t]
+        rw [Nat.mod_eq_of_lt (by omega)]
+    · congr
+      by_cases cs : k.1 = l.1 - 1
+      · rw[cs]
+        rw [Nat.sub_add_cancel (by omega)]
+        conv =>
+          enter [1,2]
+          rw [Nat.sub_add_comm (by omega), Nat.add_sub_cancel]
+          simp only [Nat.self_sub_mod]
+          rw [Nat.sub_add_cancel (by omega), Nat.mod_self]
+        simp only [tsub_zero]
+      · simp only [Nat.mod_add_mod]
+        conv =>
+          enter [1,2]
+          rw [Nat.sub_add_eq, Nat.sub_add_cancel (by omega)]
+          rw [Nat.add_sub_assoc (by omega), Nat.add_sub_assoc (by omega), Nat.add_mod_left]
+          rw [Nat.mod_eq_of_lt (by omega)]
+        grind only [cases eager Subtype, cases Or]
+  · intro ⟨k,heq⟩; rw[←heq]; simp only [← rel,
+      List.getElem_reverse, Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff', Prod.mk.injEq,
+      SetLike.coe_eq_coe, Prod.swap_prod_mk]
+    use ⟨l.val - 1 - (↑k + 1) % l.val, by
+      refine Nat.sub_lt_of_lt ?_;omega⟩; right
+    constructor
+    · unfold Conv.succ; simp only [Function.Embedding.coeFn_mk, pl1.3]
+    · unfold Conv.succ; simp only [Function.Embedding.coeFn_mk, pl1.3]
+      congr
+      by_cases cs : k = l.1 - 1
+      · rw [cs]
+        simp only [tsub_self]
+        rw [Nat.sub_add_cancel (by omega),Nat.mod_self]
+        simp only [tsub_zero]
+        rw [Nat.sub_add_cancel (by omega),Nat.mod_self]
+      · have : k + 1 < l.val := by omega
+        conv =>
+          enter [1]
+          rw [Nat.mod_eq_of_lt (this)]
+          rw [Nat.sub_add_eq, Nat.sub_add_cancel (by omega)]
+        rw [Nat.mod_eq_of_lt (by omega)]
+-- General Theorem of Permlist implications
+
+-- If pl1 pl2 map to the same edgeset then either
+-- pl1 can be rotated by a k < l into pl2 OR
+-- pl1 can be reversed into pl2
+theorem PermListRel_iff {n}{l}(S : SSn n l) :
+  ∀(pl1 pl2 : PermList S),
+  (PermListRel pl1 pl2) ↔ (RotationalRel pl1 pl2 ∨ ReversionRel pl1 pl2) := by
+  sorry --[TODO]
+-/
+
+-- /- =============================================== -/
+-- /- Rotational PermList Object -/
+
+-- /- =============================================== -/
+
+-- /- =============================================== -/
+-- /- Bundle relation with proof that it is an equivalence relation -/
+-- private
+-- def CycleSetoid {n}{l}(S : SSn n l) : Setoid (PermList S) where
+--   r := PermListRel
+--   iseqv := {
+--     refl := by grind
+--     symm := by grind
+--     trans := by grind
+--   }
+-- -- Properties
+-- /- =============================================== -/
+
+-- /- =============================================== -/
+-- /- The Quotient Type of Cycles -/
+-- def PEC {n}{l} (S : SSn n l) := Quotient (CycleSetoid S)
+-- /- =============================================== -/
+-- /- LIFTING FUNCTIONS -/
+-- /- len of cycle (C) -/
+-- def PEC_cyc_len {n}{l}{S : SSn n l}(C : PEC S) :=
+--   Quotient.lift (fun c ↦ c.1.length) (PermListRel_imp_eq_len S) C
 ```
