@@ -368,6 +368,10 @@ end Conv
 /- Function from PermList to Cycle Edgesets -/
 def PermListToPEK {n}{l}(S : SSn n l) : PermList S → PEK n := Conv.idxToPEK
 -- PROPERTIES
+-- finite
+noncomputable
+instance {n}{l}(S : SSn n l)(pl : PermList S): Fintype ↑(PermListToPEK S pl) := by
+  exact Fintype.ofFinite ↑(PermListToPEK S pl)
 -- The PEC (Cycle) returned has length l
 theorem PermListToPEK_Card {n}{l} (S : SSn n l) :
   ∀(pl : PermList S), ((PermListToPEK S) pl).ncard = l.1 := by
@@ -569,7 +573,16 @@ theorem RotationalList_univ_card {n}{l}(S : SSn n l) :
   have := l.2; linarith
 /- =============================================== -/
 /- =============================================== -/
-/- map Rotational List to PEK (Lifting function) -/
+/- Lift to length -/
+def RotationalListLen {n}{l}{S : SSn n l}(rl : RotationalList S) :=
+  Quotient.lift
+  ( fun (pl : PermList S) ↦ pl.1.length)
+  ( by
+    intro pl1 pl2 heq
+    simp only [pl1.3, pl2.3]
+  )
+  rl
+/- lift Rotational List to PEK (Lifting function) -/
 def RotationalListToPEK {n}{l}{S : SSn n l}(rl : RotationalList S) :=
   Quotient.lift
   ( fun pl ↦ (PermListToPEK S) pl )
@@ -860,27 +873,169 @@ theorem Cycle_univ_card {n}{l}(S : SSn n l) :
   · omega
 /- =============================================== -/
 /- =============================================== -/
+/- Lift to length -/
+def CycleLen {n}{l}{S : SSn n l}(C : Cycle S) :=
+  Quotient.lift
+  ( fun rl ↦ RotationalListLen rl)
+  ( by
+    intro rl1 rl2 heq
+    simp only [RotationalListLen]
+    induction' rl1 using Quotient.ind with pl1
+    induction' rl2 using Quotient.ind with pl2
+    simp only [Quotient.lift_mk, pl1.len, pl2.len]
+  )
+  C
+/- eval to l -/
+@[simp]
+theorem CycleLen_eval {n}{l}{S : SSn n l}(C : Cycle S) :
+  CycleLen C = l.1 := by
+  simp [CycleLen, RotationalListLen]
+  induction' C using Quotient.ind with rl
+  rw [Quotient.lift_mk]
+  induction' rl using Quotient.ind with pl
+  rw [Quotient.lift_mk]
+  exact pl.3
 /- Maps cycles to their respective Edgesets-/
 def CycleToPEK {n}{l}{S : SSn n l}(C : Cycle S) :=
 Quotient.lift
-  ( fun (rl : RotationalList S) ↦ RotationalListToPEK rl )
-  ( by
+  ( fun rl ↦ RotationalListToPEK rl )
+  ( by -- Huge proof in order to guarantee that all members of Quotient map to same Edgeset
     intro rl1 rl2 heq
     simp only [HasEquiv.Equiv,CycleSetoid,CycleRel] at heq
-    simp only [RotationalListToPEK, PermListToPEK]
-    simp only [Conv.idxToPEK,Conv.idxToEK]
-    sorry
+    obtain heq|heq := heq
+    · simp only [heq]
+    · induction' rl1 using Quotient.ind with pl1
+      induction' rl2 using Quotient.ind with pl2
+      simp [RotationalListSetoid, RotationalRel] at heq
+      have s : (∃ (k : Fin l.1), pl1.val.rotate ↑k = pl1.val) := by {
+        use ⟨0, by have:=l.2;omega⟩; simp only [List.rotate_zero]
+      }
+      specialize (heq pl1)
+      rw [heq] at s; obtain ⟨k,s⟩ := s
+      simp only
+      simp only [RotationalListToPEK,PermListToPEK, Conv.idxToPEK,Conv.idxToEK]
+      simp only [Fin.getElem_fin, Finset.coe_map, Function.Embedding.coeFn_mk, Finset.coe_univ,
+        Set.image_univ, Quotient.lift_mk]
+      ext e; simp only [Conv.succ, Function.Embedding.coeFn_mk, Set.mem_range]
+      have bruh :=l.2
+      constructor <;> intro ⟨idx,h⟩
+      · rw [←h]; simp only [← s, Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff',
+        Prod.mk.injEq, SetLike.coe_eq_coe, Prod.swap_prod_mk]
+        use ⟨(l.1 + l.1 - 1 - (idx + 1) - k) % l.1,
+          by refine Nat.mod_lt _ ?_;have:=l.2;linarith⟩
+        right
+        simp only [Nat.mod_add_mod]
+        constructor
+        · rw [List.getElem_rotate,List.getElem_reverse]
+          simp only [List.length_reverse,pl1.3]; congr
+          simp only [Nat.mod_add_mod]
+          rw [Nat.sub_add_cancel (by omega)]
+          rw [Nat.add_sub_assoc (by omega)]
+          by_cases cs : idx.1 = l.1 - 1
+          · rw [cs, Nat.sub_add_cancel (by omega)]
+            simp only [add_tsub_cancel_left, Nat.self_sub_mod, tsub_self, Nat.mod_self]
+          · rw [Nat.add_sub_assoc (by omega),Nat.add_mod_left,Nat.mod_eq_of_lt (by omega)]
+            rw [Nat.sub_sub_self (by omega),Nat.mod_eq_of_lt (by omega)]
+        · rw [List.getElem_rotate,List.getElem_reverse]
+          simp only [List.length_reverse,pl1.3]; congr
+          simp only [Nat.mod_add_mod]
+          rw [add_assoc,add_comm 1,←add_assoc,Nat.sub_add_cancel (by omega)]
+          rw [←Nat.sub_add_comm (by omega), Nat.sub_add_cancel (by omega)]
+          rw [Nat.add_sub_assoc (by omega), Nat.add_mod_left, add_comm, Nat.sub_add_eq]
+          rw [Nat.mod_eq_of_lt (by omega),Nat.sub_sub_self (by omega)]
+      · rw [←h]; simp only [← s, Subtype.mk.injEq, Sym2.eq, Sym2.rel_iff', Prod.mk.injEq,
+        SetLike.coe_eq_coe, Prod.swap_prod_mk]
+        use ⟨l.1 - 1 - (idx + k + 1) % l.1,
+          by
+            have : (idx + k) % l.1 < l.1 := by refine Nat.mod_lt _ ?_; omega;
+            omega⟩
+        right
+        simp only
+        constructor
+        · rw [List.getElem_rotate,List.getElem_reverse]
+          simp only [pl1.3, List.length_reverse,Nat.mod_add_mod]
+          grind only [cases eager Subtype]
+        · rw [List.getElem_rotate,List.getElem_reverse]
+          simp only [pl1.3, List.length_reverse]
+          congr
+          rw [←Nat.sub_add_comm (
+            by
+            refine (Nat.le_sub_one_iff_lt ?_).mpr ?_
+            · omega
+            · refine Nat.mod_lt (↑idx + ↑k + 1) ?_
+              omega
+            ), Nat.sub_add_cancel (by omega)]
+          have t : 1 < l.1 := by omega
+          conv => enter [1,1,2]; rw [Nat.add_mod, Nat.mod_eq_of_lt t]
+          by_cases cs : (↑idx + ↑k) % l.val = l.1 - 1
+          · rw [cs, Nat.sub_add_cancel (by omega), Nat.sub_self,Nat.mod_self]
+            simp only [tsub_zero, Nat.mod_self]
+          · have : (↑idx + ↑k) % l.val < l.val := by
+              refine Nat.mod_lt (↑idx + ↑k) ?_; omega
+            have t : ((↑idx + ↑k) % l.val + 1) < l.1 := by {
+              refine Nat.add_lt_of_lt_sub ?_; omega
+            }
+            rw [Nat.mod_eq_of_lt t]; simp only [Nat.self_sub_mod]
+            grind only [cases eager Subtype]
   )
   C
+-- PROPERTIES
+-- finite
+noncomputable instance {n}{l}{S : SSn n l}(C : Cycle S): Fintype (CycleToPEK C) := by
+  exact Fintype.ofFinite ↑(CycleToPEK C)
+-- card ret = l.1
+theorem CycleToPEK_toCard {n}{l}{S : SSn n l}(C : Cycle S) :
+  (CycleToPEK C).toFinset.card = l.1 := by
+  unfold CycleToPEK
+  induction' C using Quotient.ind with rl
+  simp only [Quotient.lift_mk]
+  unfold RotationalListToPEK
+  induction' rl using Quotient.ind with pl
+  simp only [Quotient.lift_mk]
+  convert PermListToPEK_Card S pl
+  exact Eq.symm (Set.ncard_eq_toFinset_card' (PermListToPEK S pl))
 /- =============================================== -/
 
-
 section Probability
+open MeasureTheory
+open scoped ENNReal NNReal
 /- =============================================== -/
 /- # Probability #
    This section wraps up, by providing the desired theorem for the main proof. -/
 /- =============================================== -/
--- [TODO]
+
+/- =============================================== -/
+/- The Expected number of one specific cycle -/
+noncomputable
+def Ecyc_one (S : SSn n l) (C : Cycle S) : ℝ :=
+  Pr_EsubG p n (CycleToPEK C)
+-- PROPERTIES
+-- eval = p^|cycle_length|
+theorem Ecyc_len_eval (S : SSn n l) (C : Cycle S) :
+  Ecyc_one n p l S C = p.1^(l.1) := by
+  unfold Ecyc_one
+  simp only [PrE_subs]
+  congr
+  convert CycleToPEK_toCard C
+  exact Set.ncard_eq_toFinset_card' (CycleToPEK C)
+/- =============================================== -/
+/- !We shall assume Linearity of expected values! -/
+/- =============================================== -/
+/- Expected number of length l cycles given a Vertex set-/
+noncomputable
+def Ecyc_ofPVK (S : SSn n l) : ℝ :=
+  ∑(C : Cycle S), Ecyc_one n p l S C
+/- =============================================== -/
+/- Expected number of length l cycles -/
+noncomputable
+def Ecyc_len_one : ℝ :=
+  ∑(S : SSn n l), Ecyc_ofPVK n p l S
+/- =============================================== -/
+/- Expected number of length ≤l cycles -/
+noncomputable
+def Ecyc_len_range_le : ℝ :=
+  sorry --∑(l : Cval), Ecyc_len_one n p l
+
 end Probability
 
 end API_ℂ
