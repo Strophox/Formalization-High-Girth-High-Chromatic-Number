@@ -1,5 +1,6 @@
-import Mathlib
 import Formalization.API_Probability
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Int.Star
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
@@ -16,7 +17,8 @@ variable (p : ℙval)
 structure Cval where
   val : ℕ
   proof : 3 ≤ val
-variable (l : Cval)
+  bound : val ≤ n.1
+variable (l : Cval n)
 
 section Defs
 open Equiv
@@ -38,6 +40,13 @@ theorem SSn_card :
 theorem SSn_mem_card :
 ∀(S : SSn n l), S.1.card = l.1 := by
   rintro ⟨S,hs⟩;unfold SSn at hs;grind only [= Finset.mem_powersetCard]
+-- nonempty
+theorem SSn_nonempty (h : l.val ≤ n.val): Nonempty (SSn n l) := by
+  refine Finset.Nonempty.to_subtype ?_
+  refine Finset.nonempty_of_ne_empty ?_
+  unfold SSn
+  simp only [ne_eq, Finset.powersetCard_eq_empty, Finset.card_univ, Fintype.card_fin, not_lt]
+  assumption
 -- mem nonempty
 instance (S : SSn n l) : Nonempty S := by
   have b0 := l.2
@@ -49,9 +58,10 @@ instance (S : SSn n l) : Nonempty S := by
 
 /- =============================================== -/
 /- Permutations of size l as Permutations -/
-abbrev Permutation := Perm (Fin l.1)
+abbrev Permutation {n}(l : Cval n) := Perm (Fin l.1)
 -- PROPERTIES
 -- card = l!
+@[grind! .]
 theorem Perm_univ_card :
 Fintype.card (Permutation l) = l.1.factorial := by
   rw [Fintype.card_perm, Fintype.card_fin]
@@ -271,7 +281,7 @@ theorem PermToPermList_bij {n}{l} (S : SSn n l) : (PermToPermList S).1.Bijective
 /- =============================================== -/
 /- Embedding that maps an index i (bounded by l) to its successor neighbour -/
 private
-def succ : Fin l.1 ↪ Fin l.1 :=
+def succ {n}(l : Cval n) : Fin l.1 ↪ Fin l.1 :=
   ⟨ fun a ↦ ⟨(a + 1) % l.1, by refine Nat.mod_lt (↑a + 1) ?_;have := l.2;linarith ⟩
   , by
     intro a b heq;ext;simp_all only [Fin.mk.injEq]
@@ -292,11 +302,11 @@ def succ : Fin l.1 ↪ Fin l.1 :=
 -- PROPERTIES
 -- values remain < l
 private
-lemma succ_lt_l : ∀(a : Fin l.1), succ l a < l.1 := by
+lemma succ_lt_l {n}(l : Cval n) : ∀(a : Fin l.1), succ l a < l.1 := by
   exact fun a ↦ ((succ l) a).isLt
 -- values never equal
 private
-lemma succ_neq : ∀(a : Fin l.1), a ≠ succ l a := by
+lemma succ_neq {n}(l : Cval n) : ∀(a : Fin l.1), a ≠ succ l a := by
   intro a; unfold succ; simp only [Function.Embedding.coeFn_mk, ne_eq]
   have h : (↑a + 1) % l.val = a.1 + 1 ∨ a.1 + 1 = l.val := by
       by_cases cs : a = l.1 - 1
@@ -397,9 +407,7 @@ Fintype.card (PermList S) = l.1.factorial := by
 /- =============================================== -/
 end Defs
 
-/- Create a k to 1 mapping from PermList 1 to Edgesets.
-   We have Finset.card_eq_mul_card_image_of_forall_card_fiber_eq that then gives us l! / (2l)
--/
+section kToOne
 /- =============================================== -/
 /- # kToOne #
    This section will prove that idxToPEC is a kTo1 mapping from PermLists to Cyclesets.
@@ -417,11 +425,10 @@ instance (S : SSn n l): DecidableRel (fun pl1 pl2 : PermList S ↦ (RotationalRe
   infer_instance
 -- Helper
 private
-lemma arith0 {l : Cval}(k : ℕ) : k % l.1 < l.1 := by
+lemma arith0 {l : Cval n}(k : ℕ) : k % l.1 < l.1 := by
   have:=l.2;refine Nat.mod_lt k (by omega)
 /- =============================================== -/
 /- RotationalListSetoid -/
-private
 def RotationalListSetoid {n}{l}(S : SSn n l) : Setoid (PermList S) where
   r := RotationalRel
   iseqv := {
@@ -469,7 +476,7 @@ instance {n}{l}{S : SSn n l}(rl : RotationalList S): DecidablePred (fun t ↦ �
   exact Classical.decPred fun t ↦ ⟦t⟧ = rl
 -- mem card = l
   -- embedding from fin l to Rotational List
-  noncomputable
+  private noncomputable
   def kToRotationalList {n}{l}(S : SSn n l) (rl : RotationalList S):
     (Finset.univ : Finset (Fin l.1)) ↪
     {pl : PermList S | Quotient.mk (RotationalListSetoid S) pl = rl} :=
@@ -508,6 +515,7 @@ instance {n}{l}{S : SSn n l}(rl : RotationalList S): DecidablePred (fun t ↦ �
     ⟩
   -- PROPERTIES
   -- surjective
+  private
   theorem kToRotationalList_surj {n}{l}(S : SSn n l) (rl : RotationalList S) :
   Function.Surjective (kToRotationalList S rl) := by
   intro ⟨pl,hp⟩; unfold kToRotationalList
@@ -526,6 +534,7 @@ instance {n}{l}{S : SSn n l}(rl : RotationalList S): DecidablePred (fun t ↦ �
     have : pl.val.rotate l.1 = pl.1 := by rw [←pl.3];rw [@List.rotate_length]
     simp only [this]
   -- bijective
+  private
   theorem kToRotationalList_bij {n}{l}(S : SSn n l) (rl : RotationalList S) :
   Function.Bijective (kToRotationalList S rl) :=
   ⟨(kToRotationalList S rl).2,kToRotationalList_surj S rl⟩
@@ -707,7 +716,6 @@ abbrev CycleRel {n}{l}{S : SSn n l}(rl1 rl2 : RotationalList S) :=
           ⟩ = rl2
 /- =============================================== -/
 /- Cycle Setoid -/
-private
 def CycleSetoid {n}{l}(S : SSn n l) : Setoid (RotationalList S) where
   r := CycleRel
   iseqv := {
@@ -733,12 +741,13 @@ abbrev Cycle {n}{l}(S : SSn n l) := Quotient (CycleSetoid S)
 noncomputable
 instance {n}{l}(S : SSn n l) : Fintype (Cycle S) := by
   exact Fintype.ofFinite (Cycle S)
+-- decidable mem = mem'
 noncomputable
 instance {n}{l}(S : SSn n l) : DecidableEq (Cycle S) := by
   exact Classical.typeDecidableEq (Cycle S)
 -- mem card = 2
   -- embedding from bool to Rotational List
-  noncomputable
+  private noncomputable
   def boolToCycle {n}{l}(S : SSn n l) (C : Cycle S) :
   (Finset.univ : Finset Bool) ↪
   {rl : RotationalList S | Quotient.mk (CycleSetoid S) rl = C} :=
@@ -796,6 +805,7 @@ instance {n}{l}(S : SSn n l) : DecidableEq (Cycle S) := by
       Fintype.univ_bool, Finset.insert_val, Finset.singleton_val, imp_self]
   ⟩
   -- surjective (Refreshingly not painful)
+  private
   theorem boolToCycle_surj {n}{l}(S : SSn n l) (C : Cycle S) :
     Function.Surjective (boolToCycle S C) := by
     intro ⟨rl,hp⟩
@@ -816,6 +826,7 @@ instance {n}{l}(S : SSn n l) : DecidableEq (Cycle S) := by
       use ⟨0,by have:=l.2;omega⟩
       simp only [List.rotate_zero]
   -- bijective
+  private
   theorem boolToCycle_bij {n}{l}(S : SSn n l) (C : Cycle S) :
   Function.Bijective (boolToCycle S C) := ⟨(boolToCycle S C).2,boolToCycle_surj S C⟩
 /- === -/
@@ -886,7 +897,7 @@ def CycleLen {n}{l}{S : SSn n l}(C : Cycle S) :=
   )
   C
 /- eval to l -/
-@[simp]
+@[simp, grind =]
 theorem CycleLen_eval {n}{l}{S : SSn n l}(C : Cycle S) :
   CycleLen C = l.1 := by
   simp [CycleLen, RotationalListLen]
@@ -996,6 +1007,7 @@ theorem CycleToPEK_toCard {n}{l}{S : SSn n l}(C : Cycle S) :
   convert PermListToPEK_Card S pl
   exact Eq.symm (Set.ncard_eq_toFinset_card' (PermListToPEK S pl))
 /- =============================================== -/
+end kToOne
 
 section Probability
 open MeasureTheory
@@ -1006,12 +1018,13 @@ open scoped ENNReal NNReal
 /- =============================================== -/
 
 /- =============================================== -/
-/- The Expected number of one specific cycle -/
+/- The Expected number of one specific cycle of length l -/
 noncomputable
 def Ecyc_one (S : SSn n l) (C : Cycle S) : ℝ :=
   Pr_EsubG p n (CycleToPEK C)
 -- PROPERTIES
--- eval = p^|cycle_length|
+-- eval = p^l
+@[simp, grind =]
 theorem Ecyc_len_eval (S : SSn n l) (C : Cycle S) :
   Ecyc_one n p l S C = p.1^(l.1) := by
   unfold Ecyc_one
@@ -1020,23 +1033,63 @@ theorem Ecyc_len_eval (S : SSn n l) (C : Cycle S) :
   convert CycleToPEK_toCard C
   exact Set.ncard_eq_toFinset_card' (CycleToPEK C)
 /- =============================================== -/
-/- !We shall assume Linearity of expected values! -/
+/- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   We shall assume Linearity of expected values
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -/
 /- =============================================== -/
 /- Expected number of length l cycles given a Vertex set-/
 noncomputable
 def Ecyc_ofPVK (S : SSn n l) : ℝ :=
   ∑(C : Cycle S), Ecyc_one n p l S C
+-- PROPERTIES
+-- eval = l!/(2l) * p^l
+@[simp, grind =]
+theorem Ecyc_ofPVK_eval (S : SSn n l) :
+  Ecyc_ofPVK n p l S = l.1.factorial / (2 * l.1) * p.1^(l.1) := by
+  unfold Ecyc_ofPVK
+  simp only [Ecyc_len_eval, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_eq_mul_right_iff,
+    pow_eq_zero_iff', NNReal.coe_eq_zero, ne_eq]
+  left
+  rw [Cycle_univ_card S, mul_comm l.1]
+  obtain ⟨l,lp,bound⟩ := l
+  simp_all only
+  rw [Nat.cast_div]
+  pick_goal 2; {
+    clear S bound
+    induction' lp with l bd ih
+    · simp only [Nat.reduceMul, Nat.factorial, Nat.succ_eq_add_one, Nat.reduceAdd, zero_add,
+      mul_one, dvd_refl]
+    · unfold Nat.factorial
+      rw [mul_comm]
+      refine Nat.mul_dvd_mul ?_ ?_
+      · simp only [Nat.succ_eq_add_one, dvd_refl]
+      · exact dvd_of_mul_right_dvd ih
+  }
+  pick_goal 2; { by_contra cnt; push_cast at cnt; simp_all only [mul_eq_zero, OfNat.ofNat_ne_zero,
+    Nat.cast_eq_zero, false_or]; subst cnt; contradiction }
+  push_cast; rfl
 /- =============================================== -/
 /- Expected number of length l cycles -/
 noncomputable
 def Ecyc_len_one : ℝ :=
   ∑(S : SSn n l), Ecyc_ofPVK n p l S
+-- PROPERTIES
+-- eval = (n choose l) * l!/(2l) * p^l
+@[simp, grind =]
+theorem Ecyc_len_one_eval :
+  Ecyc_len_one n p l = n.1.choose l.1 * l.1.factorial / (2 * l.1) * p.1^(l.1) := by
+  unfold Ecyc_len_one; simp only [Finset.univ_eq_attach, Ecyc_ofPVK_eval, Finset.sum_const,
+    Finset.card_attach, nsmul_eq_mul]
+  rw [SSn_card]
+  grind only [cases eager Subtype]
 /- =============================================== -/
 /- Expected number of length ≤l cycles -/
 noncomputable
-def Ecyc_len_range_le : ℝ :=
-  sorry --∑(l : Cval), Ecyc_len_one n p l
-
+def Ecyc_len_range_le {n} (lmax : Cval n) : ℝ :=
+  ∑(i : Fin (lmax.1 - 3)), Ecyc_len_one n p ⟨i + 3,
+    by exact Nat.le_add_left 3 i,
+    by have:=i.2;have:=lmax.3;omega ⟩
+/- =============================================== -/
 end Probability
 
 end API_ℂ
