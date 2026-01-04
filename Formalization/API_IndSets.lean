@@ -275,17 +275,22 @@ theorem PrI_val (I : PVK n) : (PrI n p I) = (1-p.1)^(Nat.choose I.ncard 2) := by
 /- =============================================== -/
 -- DEF: Exact probability
 noncomputable
-def PrI_ofsz (sz : SZval n) :=
+def PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
   (EKμ p n).real (⋃(I ∈ (IndSets_ofsz n sz)),(F_EdisjG n (EK_sub n I)))
+noncomputable
+/- EXACT PROBABILITY not requiring special structures -/
+def PrI_ofsz' (p : ℙval)(n sz : ℕ)(bd : 0 < n)(h : sz ≤ n) :=
+  let n : Nval := ⟨n,bd⟩;
+  let sz : SZval n := ⟨sz,h⟩
+  PrI_ofsz p sz
 -- DEF: Bounded probability
 private noncomputable
-def bounded_PrI_ofsz (sz : SZval n) :=
+def bounded_PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
   ∑(I ∈ (IndSets_ofsz n sz)), Pr_EdisjG p n (EK_sub n I)
-
 /- Eval of Bounded Probability i.e. n choose sz * (1 - p)^(sz choose 2)
    A helper lemma for the final step of the start of part 2. -/
-private lemma bounded_PrI_ofsz_val (sz : SZval n) :
-  bounded_PrI_ofsz n p sz = (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
+private lemma bounded_PrI_ofsz_val (p : ℙval){n}(sz : SZval n) :
+  bounded_PrI_ofsz p sz = (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
   unfold bounded_PrI_ofsz
   simp [EK_sub_card]
   trans ∑ x ∈ IndSets_ofsz n sz, (1 - ↑p.val) ^ sz.val.choose 2
@@ -299,8 +304,8 @@ private lemma bounded_PrI_ofsz_val (sz : SZval n) :
 /- The probability of a graph containing at least one independent set of size sz is
    upper bounded by !!! (n choose sz) * (1 - p)^(sz choose 2) !!!
    Note that this is equivalent to the Probability that [α(G) ≥ sz]. -/
-theorem PrI_ofsz_UBval {n}(sz : SZval n):
-  (PrI_ofsz n p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
+theorem PrI_ofsz_UBval (p : ℙval){n}(sz : SZval n):
+  (PrI_ofsz p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
   let IndSZ := (IndSets_ofsz n sz);
   rw [←bounded_PrI_ofsz_val]
   unfold bounded_PrI_ofsz PrI_ofsz Pr_EdisjG

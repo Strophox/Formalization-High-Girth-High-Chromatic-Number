@@ -1073,6 +1073,11 @@ theorem Ecyc_ofPVK_eval (S : SSn n l) :
 noncomputable
 def Ecyc_len_one : ℝ :=
   ∑(S : SSn n l), Ecyc_ofPVK n p l S
+noncomputable
+def Ecyc_len_one' (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : 3 ≤ l)(h2 : l ≤ n) : ℝ :=
+  let n : Nval := ⟨n, h0⟩;
+  let l : Cval n := ⟨l,h1,h2⟩;
+  Ecyc_len_one n p l
 -- PROPERTIES
 -- eval = (n choose l) * l!/(2l) * p^l
 @[simp, grind =]
@@ -1089,6 +1094,10 @@ def Ecyc_len_range_le {n} (lmax : Cval n) : ℝ :=
   ∑(i : Fin (lmax.1 - 3)), Ecyc_len_one n p ⟨i + 3,
     by exact Nat.le_add_left 3 i,
     by have:=i.2;have:=lmax.3;omega ⟩
+/- unfolded version -/
+noncomputable
+def Ecyc_len_range_le' (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : l ≤ n)(_ : 3 ≤ l) : ℝ :=
+  ∑(i : Fin (l - 3)), Ecyc_len_one' p n (i+3) h0 (by omega) (by omega)
 /- =============================================== -/
 end Probability
 

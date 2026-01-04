@@ -12,44 +12,17 @@ set_option autoImplicit false
 -- set_option tactic.hygienic false
 set_option linter.style.longLine false
 set_option linter.style.commandStart false
+set_option linter.style.induction false
 
 open API_ℙ API_𝕀 API_ℂ Real
-open scoped API_ℙ API_ℂ API_𝕀 NNReal
-
-/- WHACKY THETA -/
-structure Theta {n} (lmax : Cval n) where
-  val : ℝ≥0
-  lt : val < 1 / (lmax.1 : ℝ)
-variable {n}{lmax : Cval n}(θ : Theta lmax)
-/- WHACKY PROBABILITY -/
-noncomputable
-def pθ {n}{lmax : Cval n}(θ : Theta lmax) : ℙval :=
-⟨((n.1 : ℝ)^((θ.1 : ℝ) - 1)).toNNReal,
-  by
-  simp only [toNNReal_le_one]
-  obtain ⟨n,np⟩ := n;obtain ⟨θ,tp⟩ := θ;obtain ⟨l,l1,l2⟩ := lmax; simp_all only
-  grw [tp]
-  pick_goal 2; {simp only [Nat.one_le_cast]; omega}
-  simp_all only
-  have : 1/3 ≥ 1/(l : ℝ) := by
-    simp only [one_div, ge_iff_le]
-    refine inv_anti₀ (by linarith) (by simp only [Nat.ofNat_le_cast, l1])
-  grw [←this]
-  pick_goal 2; {simp only [Nat.one_le_cast]; omega}
-  refine (rpow_le_one_iff_of_pos ?_).mpr ?_
-  · simp only [Nat.cast_pos, np]
-  · left; constructor
-    · simp only [Nat.one_le_cast]
-      omega
-    · simp only [one_div, tsub_le_iff_right, zero_add]
-      refine inv_le_one_iff₀.mpr (by right;exact Nat.one_le_ofNat) ⟩
+open scoped API_ℂ API_𝕀 NNReal Real
 
 /- Start of part 1 -/
-lemma P1_1 (n : Nval) (lmax : Cval n) (θ : Theta lmax) :
-  Ecyc_len_range_le (pθ θ) lmax ≤ lmax.1 * n.1^((θ.1: ℝ) * lmax.1) := by
-  unfold Ecyc_len_range_le
+lemma P1_1 (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : l ≤ n)(pre : 3 ≤ l) :
+  Ecyc_len_range_le' p n l h0 h1 pre ≤ (l:ℝ) * ((n:ℝ) * p.1.toReal)^(l : ℝ) := by
+  unfold Ecyc_len_range_le' Ecyc_len_one'
   simp only [Ecyc_len_one_eval, Nat.cast_add, Nat.cast_ofNat]
-  -- less go
+  -- [TODO]
   sorry
 /- Intermission where Markov inequality is used then Back to normal probability -/
 -- [TODO]
@@ -57,10 +30,11 @@ lemma P1_1 (n : Nval) (lmax : Cval n) (θ : Theta lmax) :
 -- [TODO]
 
 /- Start of part 2 -/
-lemma P2_1 (n : Nval) (p : ℙval) (sz : SZval n) :
-  (PrI_ofsz n p sz) ≤ (exp 0) / (sz.val.factorial) := by
-  grw [PrI_ofsz_UBval]
-  -- Less Go (exp 1) is Eulers Number
+lemma P2_1 (p : ℙval)(n sz : ℕ)(bd : 0 < n) (h : sz ≤ n):
+  (PrI_ofsz' p n sz bd h) ≤ rexp 0 / sz.factorial := by
+  unfold PrI_ofsz'; grw [PrI_ofsz_UBval]
+  simp only
+  --[TODO]
   sorry
 /- LIMITS PROOF into Axiom of choice (MUST USE CLASSICAL CHOOSE) -/
 -- [TODO]
