@@ -11,98 +11,31 @@ import Mathlib.Topology.MetricSpace.Contracting
 import Mathlib.Topology.NoetherianSpace
 import Mathlib.Topology.Separation.CompletelyRegular
 
+import Formalization.API_Graph
+
 set_option autoImplicit false
 set_option linter.style.commandStart false
+set_option linter.style.induction false
 variable {α : Type*}
 
 namespace API_ℙ
+
+open API_𝔾
+open scoped API_𝔾
 open MeasureTheory
 open scoped ENNReal NNReal
-/- =============================================== -/
-/- # DEFS # -/
-/- =============================================== -/
-
 /- =============================================== -/
 /- Values -/
 structure ℙval where
   val   : ℝ≥0
   proof : val ≤ 1
-structure Nval where
-  val   : ℕ
-  proof : val > 0
 -- mark as variables
 variable (p : ℙval)
 variable (n : Nval)
 /- =============================================== -/
 
 /- =============================================== -/
-/- Graph types and Graph constants -/
-abbrev Fingraph := SimpleGraph (Fin n.1) -- Our graph type
-abbrev KGraph : Fingraph n := SimpleGraph.completeGraph (Fin n.1) -- A complete Graph
-/- =============================================== -/
-
-/- =============================================== -/
-/- Vertex Set -/
-abbrev VK := Fin n.1
--- PROPERTIES
-instance : Fintype (VK n) := by
-  exact Fin.fintype n.val
-instance : DecidableEq (VK n) := by
-  exact instDecidableEqFin n.val
-instance VK_nonempty : Nonempty (VK n) := by
-  exact Fin.pos_iff_nonempty.mp n.2
-/- =============================================== -/
-
-/- =============================================== -/
-/- Vertex Power Set -/
-abbrev PVK := Set (Fin n.1)
--- PROPERTIES
-noncomputable
-instance : Fintype (PVK n) := by
-  exact Fintype.ofFinite ↑(PVK n)
-noncomputable
-instance (I : PVK n) : Fintype I := by
-  exact Fintype.ofFinite ↑I
-instance : Nonempty (PVK n) := by
-  exact instNonemptyOfInhabited
-/- =============================================== -/
-
-/- =============================================== -/
-/- Complete EdgeSet -/
-abbrev EK := (KGraph n).edgeSet
--- Properties :
-noncomputable instance : Fintype (EK n) := by
-  exact Fintype.ofFinite ↑(EK n)
-noncomputable instance : DecidableEq (EK n) := by
-  exact instDecidableEqOfLawfulBEq
--- Helpers
-@[scoped simp 10]
-theorem mem_EK_iff : ∀(n : Nval),∀(a b), s(a, b) ∈ EK n ↔ a ≠ b := by {
-  intros n a b;
-  simp only [SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq, ne_eq]
-}
-/- =============================================== -/
-
-/- =============================================== -/
-/- Complete EdgePowerSet -/
-abbrev PEK := Set (EK n)
--- Properties :
-noncomputable instance : Fintype (PEK n) := by
-  exact Set.fintype
-noncomputable instance : DecidableEq (PEK n) := by
-  exact Classical.typeDecidableEq (PEK n)
-/- =============================================== -/
-
-/- =============================================== -/
-/- Sets of Edgesets -/
-abbrev PPEK := Set (PEK n)
--- Properties :
-noncomputable instance : Fintype (PPEK n) := by
-  exact Set.fintype
-noncomputable instance (E': PPEK n): Fintype E' := by
-  exact Fintype.ofFinite ↑E'
-noncomputable instance PPEK_Countable (E': PPEK n) : Set.Countable E' := by
-  exact Set.to_countable E'
+/- # DEFS # -/
 /- =============================================== -/
 
 /- =============================================== -/
@@ -317,4 +250,119 @@ theorem PrE_disj_UB (E' : PPEK n) :
   refine MeasureTheory.measure_biUnion_finset_le E'.toFinset (F_EdisjG n)
 /- =============================================== -/
 
+/- =============================================== -/
+/- If Probability > 1 then there exists a graph -/
+theorem f_exists (F : Set (ΩK n)) :
+  0 < (EKμ p n).real F → ∃f, f ∈ F := by
+  intro h
+  set M := (EKμ p n)
+  simp_all only [Measure.real_def]
+  by_contra cnt; push_neg at cnt
+  have t : F = ∅ := Set.eq_empty_of_forall_notMem cnt
+  subst t
+  simp only [measure_empty, ENNReal.toReal_zero, lt_self_iff_false] at h
+/- If Probability < 1 then there exists a graph in the complement -/
+theorem f_complement_exists (F : Set (ΩK n)) :
+  (EKμ p n).real F < 1 → ∃f, f ∈ Fᶜ := by
+  intro h
+  set M := (EKμ p n)
+  simp_all only [Measure.real_def]
+  have t0 : Disjoint F Fᶜ := by
+    exact Set.disjoint_compl_right_iff_subset.mpr fun ⦃a⦄ a_1 ↦ a_1
+  have t1 : M (F ∪ Fᶜ) = 1 := by
+    have t11 : (F ∪ Fᶜ) = (Set.univ : Set (ΩK n)) := by exact Set.union_compl_self F
+    rw [t11]; simp only [measure_univ]
+  have t2 : MeasurableSet Fᶜ := by
+    exact DiscreteMeasurableSpace.forall_measurableSet Fᶜ
+  rw [measure_union t0 t2] at t1
+  by_contra cnt; push_neg at cnt
+  have t : Fᶜ = ∅ := Set.eq_empty_of_forall_notMem cnt
+  rw [t] at t1; simp only [measure_empty, add_zero] at t1
+  simp_all only [ENNReal.toReal_one, lt_self_iff_false]
+/- =============================================== -/
+
+/- =============================================== -/
+/- # CONVERSION # -/
+/- =============================================== -/
+
+/- =============================================== -/
+/- Convert ΩK to SimpleGraph -/
+def ΩKtoFinGraph : ΩK n → Fingraph n :=
+  fun f ↦ ({
+    Adj u v := u ≠ v ∧ ( (h : u ≠ v) → f ⟨s(u,v),h⟩ = true )
+    symm := by
+      intro a b
+      simp only [ne_eq, and_imp]
+      intro neq h; specialize h neq
+      constructor
+      · grind only
+      · intro h'
+        have : s(a,b) = s(b,a) := by exact Sym2.eq_swap
+        simp only [← this, ←h]
+  } : Fingraph n)
+/- =============================================== -/
+/- Convert SimpleGraph to ΩK -/
+noncomputable
+instance (G : Fingraph n)(a b : Fin n.1) : Decidable (G.Adj a b) := by
+  exact Classical.propDecidable (G.Adj a b)
+noncomputable
+def FinGraphToΩK : Fingraph n → ΩK n :=
+  fun G ↦ ( fun e ↦
+    Sym2.lift ⟨fun a b ↦ if G.Adj a b then true else false,
+      by
+      intro a b;
+      simp only [Bool.if_false_right, Bool.and_true, decide_eq_decide]
+      exact SimpleGraph.adj_comm G a b
+    ⟩  e : ΩK n)
+/- =============================================== -/
+/- Equivalence
+   Ussage: .1 is from Function to Graph and .2 is from Graph to Function -/
+noncomputable
+def ΩK_EQ_FinGraph : ΩK n ≃ Fingraph n := {
+  toFun := ΩKtoFinGraph n
+  invFun := FinGraphToΩK n
+  left_inv := by
+    intro f
+    unfold FinGraphToΩK ΩKtoFinGraph
+    simp only [ne_eq, Bool.if_false_right, Bool.decide_and, decide_not, Bool.and_true]
+    ext e
+    obtain ⟨⟨a,b⟩,ep⟩ := e
+    simp only [Sym2.lift_mk]
+    generalize gen : f ⟨Quot.mk (Sym2.Rel (Fin n.val)) (a, b), ep⟩ = b
+    fin_cases b
+    · simp only [Bool.and_eq_true, Bool.not_eq_eq_eq_not, Bool.not_true, decide_eq_false_iff_not,
+      decide_eq_true_eq]
+      rename_i e; simp only [SimpleGraph.edgeSet_top, Set.mem_setOf_eq,
+        Sym2.isDiag_iff_proj_eq] at ep
+      constructor
+      · assumption
+      · intro ep'
+        simp only [gen]
+    · simp only [Bool.and_eq_false_imp, Bool.not_eq_eq_eq_not, Bool.not_true,
+      decide_eq_false_iff_not, not_forall, Bool.not_eq_true]
+      intro ne; use ne
+  right_inv := by
+    intro G
+    unfold FinGraphToΩK ΩKtoFinGraph
+    simp only [ne_eq, Bool.if_false_right, Bool.and_true, Sym2.lift_mk, decide_eq_true_eq]
+    induction' G with Adj symm lp
+    simp only [SimpleGraph.mk.injEq]
+    ext u v
+    constructor
+    · intro ⟨ha,hb⟩; apply hb at ha; assumption
+    · intro adj; constructor
+      · unfold Irreflexive at lp
+        by_contra cnt
+        rw [cnt] at adj
+        specialize lp v
+        contradiction
+      · intro; trivial
+}
+/- =============================================== -/
+
+-- [TODO]
+/- G with P[X ≥ n₁/2] + P[α(G) ≥ x(n₂)] < 0.5 + 0.5
+   -- Show any f in the complement of the union of events (X ≥ n/2),(α(G) ≥ x(n)) implies
+      that the graph f has X < n / 2 and α(G) < x(n) [TODO]
+-/
 end API_ℙ

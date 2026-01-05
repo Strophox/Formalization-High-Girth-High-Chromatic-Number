@@ -8,8 +8,8 @@ set_option linter.style.induction false
 variable {α : Type*}
 
 namespace API_ℂ
-open API_ℙ
-open scoped API_ℙ
+open API_ℙ API_𝔾
+open scoped API_ℙ API_𝔾
 variable (n : Nval)
 variable (p : ℙval)
 
@@ -1009,6 +1009,15 @@ theorem CycleToPEK_toCard {n}{l}{S : SSn n l}(C : Cycle S) :
 /- =============================================== -/
 end kToOne
 
+/- =============================================== -/
+-- # Cycles #
+/- =============================================== -/
+
+/- =============================================== -/
+def hasCycle {n}{l}(f : ΩK n)(S : SSn n l)(C : Cycle S) :=
+  ∀(e : CycleToPEK C), f e = true
+/- =============================================== -/
+
 section Probability
 open MeasureTheory
 open scoped ENNReal NNReal
@@ -1099,6 +1108,7 @@ noncomputable
 def Ecyc_len_range_le' (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : l ≤ n)(_ : 3 ≤ l) : ℝ :=
   ∑(i : Fin (l - 3)), Ecyc_len_one' p n (i+3) h0 (by omega) (by omega)
 /- =============================================== -/
+
 end Probability
 
 end API_ℂ

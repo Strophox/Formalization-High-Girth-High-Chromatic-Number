@@ -5,8 +5,8 @@ set_option linter.style.commandStart false
 variable {α : Type*}
 
 namespace API_𝕀
-open API_ℙ
-open scoped API_ℙ
+open API_ℙ API_𝔾
+open scoped API_ℙ API_𝔾
 variable (p : ℙval)
 variable (n : Nval)
 
@@ -201,6 +201,7 @@ theorem IndSets_ofsz_mem_card :
 /- # INDSETS # -/
 /- =============================================== -/
 
+/- =============================================== -/
 /- Is independent set in Graph -/
 noncomputable
 abbrev is_IndSetG {n}(f : ΩK n)(I : PVK n) :=
