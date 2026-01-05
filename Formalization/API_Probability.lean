@@ -211,6 +211,15 @@ theorem PrE_subs (E : PEK n):
 /- =============================================== -/
 
 /- =============================================== -/
+/- Subset lemma -/
+theorem Pr_subset :
+  ∀(F1 F2 : Set (ΩK n)), F1 ⊆ F2 → (EKμ p n).real F1 ≤ (EKμ p n).real F2 := by
+  intro F1 F2 fsub
+  refine measureReal_mono fsub ?_
+  simp only [ne_eq, measure_ne_top, not_false_eq_true]
+/- =============================================== -/
+
+/- =============================================== -/
 @[scoped simp 10]
 /- Pr[E' ∩ E(G) = ∅] = (1-p)^|E'| -/
 theorem PrE_disj (E : PEK n):
