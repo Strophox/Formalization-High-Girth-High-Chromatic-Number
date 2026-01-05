@@ -31,8 +31,8 @@ lemma P1_1 (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : l ≤ n)(pre : 3 ≤ l) :
 
 /- Start of part 2 -/
 lemma P2_1 (p : ℙval)(n sz : ℕ)(bd : 0 < n) (h : sz ≤ n):
-  (PrI_αG_gt p n sz bd h) ≤ rexp 0 / sz.factorial := by
-  unfold PrI_ofsz'; simp only; grw [UB_PrI_ofsz]
+  (PrI_αG_gt' p n sz bd h) ≤ rexp 0 / sz.factorial := by
+  unfold PrI_αG_gt'; simp only; grw [UB_PrI_αG_gt]
   simp only
   --[TODO]
   sorry

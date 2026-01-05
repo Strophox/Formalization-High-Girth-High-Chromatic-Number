@@ -440,17 +440,17 @@ theorem PrI_val {n}(I : PVK n) : (PrI p I) = (1-p.1)^(Nat.choose I.ncard 2) := b
 noncomputable
 def PrI_αG_gt (p : ℙval){n}(sz : SZval n) :=
   (EKμ p n).real ( G_αG_ge sz )
+-- unfolded
+noncomputable
+def PrI_αG_gt' (p : ℙval)(n sz : ℕ)(bd : 0 < n)(h : sz ≤ n) :=
+  let n : Nval := ⟨n,bd⟩;
+  let sz : SZval n := ⟨sz,h⟩;
+  PrI_αG_gt p sz
 /- =============================================== -/
 /- Probability of a graph having at least one independent set of size sz -/
 noncomputable
 def PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
   (EKμ p n).real ( G_any_ind_ofsz sz )
--- unfolded
-noncomputable
-def PrI_ofsz' (p : ℙval)(n sz : ℕ)(bd : 0 < n)(h : sz ≤ n) :=
-  let n : Nval := ⟨n,bd⟩;
-  let sz : SZval n := ⟨sz,h⟩;
-  PrI_ofsz p sz
 -- upper bounded
 private noncomputable
 def UB_PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
