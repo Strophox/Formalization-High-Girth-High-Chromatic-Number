@@ -312,13 +312,14 @@ theorem αG_lt_eq_ge_complement (sz : SZval n) : G_αG_lt sz = (G_αG_ge sz)ᶜ 
   ext f; simp only [Set.mem_setOf_eq, ge_iff_le, Set.mem_compl_iff, not_le]
 /- =============================================== -/
 /- The set of all graphs having at least one independent set of size sz -/
-abbrev G_any_ind_ofsz {n}(sz : SZval n) := ⋃(I ∈ (IndSets_ofsz n sz)),(F_EdisjG n (EK_sub n I))
+abbrev F_any_ind_ofsz {n}(sz : SZval n) :=
+  ⋃(I ∈ (IndSets_ofsz n sz)),(F_EdisjG n (EK_sub n I))
 -- PROPERTIES
 /- =============================================== -/
 /- General Theorems -/
--- If a graph G has at least one independent set of size sz iff α(G) ≥ sz
-theorem G_any_ind_ofsz_iff_αG_ge {n}(sz : SZval n)(f : ΩK n) :
-  f ∈ G_any_ind_ofsz sz ↔ αG f ≥ sz.1 := by
+-- A graph G has at least one independent set of size sz iff α(G) ≥ sz
+theorem F_any_ind_ofsz_iff_αG_ge {n}(sz : SZval n)(f : ΩK n) :
+  f ∈ F_any_ind_ofsz sz ↔ αG f ≥ sz.1 := by
   constructor
   · intro h; simp only [Set.mem_iUnion, Finset.mem_powersetCard, Set.toFinset_univ,
     Finset.subset_univ, true_and, exists_prop] at h
@@ -405,13 +406,13 @@ theorem G_any_ind_ofsz_iff_αG_ge {n}(sz : SZval n)(f : ΩK n) :
 -- The set of all graphs having at least one independent set of size sz
 -- is EQUAL to
 -- The set of all graphs having α(G) ≥ sz
-theorem G_any_ind_ofsz_eq_G_αG_ge {n}(sz : SZval n) :
-  G_any_ind_ofsz sz = G_αG_ge sz := by
+theorem F_any_ind_ofsz_eq_G_αG_ge {n}(sz : SZval n) :
+  F_any_ind_ofsz sz = G_αG_ge sz := by
   ext f
   constructor
-  · intro h; rw [G_any_ind_ofsz_iff_αG_ge] at h
+  · intro h; rw [F_any_ind_ofsz_iff_αG_ge] at h
     simp_all only [Set.mem_setOf_eq, ge_iff_le]
-  · intro h; rw [G_any_ind_ofsz_iff_αG_ge]
+  · intro h; rw [F_any_ind_ofsz_iff_αG_ge]
     simp_all only [Set.mem_setOf_eq, ge_iff_le]
   /- =============================================== -/
 
@@ -451,7 +452,7 @@ def PrI_αG_gt' (p : ℙval)(n sz : ℕ)(bd : 0 < n)(h : sz ≤ n) :=
 /- Probability of a graph having at least one independent set of size sz -/
 noncomputable
 def PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
-  (EKμ p n).real ( G_any_ind_ofsz sz )
+  (EKμ p n).real ( F_any_ind_ofsz sz )
 -- upper bounded
 private noncomputable
 def UB_PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
@@ -477,8 +478,8 @@ theorem UB_PrI_αG_gt (p : ℙval){n}(sz : SZval n):
   (PrI_αG_gt p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
   let IndSZ := (IndSets_ofsz n sz);
   rw [←UB_PrI_ofsz_eval]
-  unfold PrI_αG_gt; rw [←G_any_ind_ofsz_eq_G_αG_ge]
-  unfold G_any_ind_ofsz UB_PrI_ofsz Pr_EdisjG
+  unfold PrI_αG_gt; rw [←F_any_ind_ofsz_eq_G_αG_ge]
+  unfold F_any_ind_ofsz UB_PrI_ofsz Pr_EdisjG
   set M := (EKμ p n);
 
   -- TYPES :(
@@ -493,7 +494,6 @@ theorem UB_PrI_αG_gt (p : ℙval){n}(sz : SZval n):
     (IndSets_ofsz n sz)
     (fun I ↦ F_EdisjG n (EK_sub n I))
 /- =============================================== -/
-
 
 end Probability
 

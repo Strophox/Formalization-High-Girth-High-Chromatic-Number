@@ -1,4 +1,8 @@
-import Mathlib
+-- import Mathlib
+
+import Mathlib.Combinatorics.SimpleGraph.Basic
+import Mathlib.Data.Fintype.Powerset
+import Mathlib.Data.Set.Countable
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
@@ -104,3 +108,5 @@ noncomputable instance PPEK_Countable (E': PPEK n) : Set.Countable E' := by
 /- =============================================== -/
 
 end API_𝔾
+
+#min_imports

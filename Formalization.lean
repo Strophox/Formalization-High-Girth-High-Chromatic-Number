@@ -18,19 +18,20 @@ open API_ℙ API_𝕀 API_ℂ Real
 open scoped API_ℂ API_𝕀 NNReal Real
 
 /- Start of part 1 -/
-lemma P1_1 (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : l ≤ n)(pre : 3 ≤ l) :
-  Ecyc_len_range_le' p n l h0 h1 pre ≤ (l:ℝ) * ((n:ℝ) * p.1.toReal)^(l : ℝ) := by
-  unfold Ecyc_len_range_le' Ecyc_len_one'
-  simp only [Ecyc_len_one_eval, Nat.cast_add, Nat.cast_ofNat]
+#print E_cycle_ofLen_le -- our 𝔼
+lemma P1_1 (p : ℙval)(n l : ℕ)(h0 : 0 < n) :
+  E_cycle_ofLen_le p ⟨n,h0⟩ l ≤ (l:ℝ) * ((n:ℝ) * p.1.toReal)^(l:ℝ) := by
   -- [TODO]
   sorry
 /- Intermission where Markov inequality is used then Back to normal probability -/
+#print Cycles_count_le_ge -- Probability
+#check EcycToPcyc_markov -- Markov inequality
 -- [TODO]
 /- LIMITS PROOF into Axiom of choice (MUST USE CLASSICAL CHOOSE) -/
 -- [TODO]
 
 /- Start of part 2 -/
-lemma P2_1 (p : ℙval)(n sz : ℕ)(bd : 0 < n) (h : sz ≤ n):
+lemma P2_1 (p : ℙval)(n sz : ℕ)(bd : 0 < n)(h : sz ≤ n):
   (PrI_αG_gt' p n sz bd h) ≤ rexp 0 / sz.factorial := by
   unfold PrI_αG_gt'; simp only; grw [UB_PrI_αG_gt]
   simp only

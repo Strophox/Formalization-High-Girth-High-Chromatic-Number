@@ -1,6 +1,10 @@
 import Formalization.API_Probability
 import Mathlib.Algebra.Order.Ring.Star
 import Mathlib.Data.Int.Star
+import Mathlib.MeasureTheory.Integral.Lebesgue.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Countable
+import Mathlib.MeasureTheory.Integral.Lebesgue.MeasurePreserving
+import Mathlib.MeasureTheory.Integral.Lebesgue.Norm
 
 set_option autoImplicit false
 set_option linter.style.commandStart false
@@ -19,6 +23,17 @@ structure Cval where
   proof : 3 ≤ val
   bound : val ≤ n.1
 variable (l : Cval n)
+-- PROPERTIES
+-- finite
+noncomputable
+instance : Fintype (Cval n) := by
+  refine Fintype.ofInjective ( (fun l' ↦
+    ⟨l'.1, by have:=l'.3;have t:=l'.2;grw[this];omega⟩) : Cval n → Fin (n.1 + 1) ) ?_
+  intro l0 l1; simp only [Fin.mk.injEq]; intro heq
+  obtain ⟨⟩ := l0;obtain ⟨⟩ := l1; simp_all only
+-- countable
+instance : Countable (Cval n) := by exact Finite.to_countable
+
 
 section Defs
 open Equiv
@@ -1010,13 +1025,121 @@ theorem CycleToPEK_toCard {n}{l}{S : SSn n l}(C : Cycle S) :
 end kToOne
 
 /- =============================================== -/
--- # Cycles #
+/- # Cycles # -/
 /- =============================================== -/
 
 /- =============================================== -/
-def hasCycle {n}{l}(f : ΩK n)(S : SSn n l)(C : Cycle S) :=
-  ∀(e : CycleToPEK C), f e = true
+/- Universe of all cycles of length l -/
+abbrev CyclesOflen {n}(l : Cval n) : Type := (S : SSn n l) × Cycle S
+-- PROPERTIES
+-- finite
+noncomputable
+instance : Fintype (CyclesOflen l) := by
+  exact Sigma.instFintype
+-- card
+theorem CyclesOflen_univ_card {n}(l : Cval n) :
+  Fintype.card (CyclesOflen l) = n.1.choose l.1 * (l.1.factorial / (l.1 * 2)) := by
+  simp only [Fintype.card_sigma, Finset.univ_eq_attach]
+  conv =>
+    enter [1,2]; ext S
+    rw [Cycle_univ_card]
+  simp only [SSn_card ,Finset.sum_const, Finset.card_attach, smul_eq_mul]
 /- =============================================== -/
+/- Universe of all cycles -/
+abbrev Cycles (n : Nval) : Type := (l : Cval n) × (S : SSn n l) × Cycle S
+-- PROPERTIES
+-- finite
+noncomputable
+instance : Fintype (Cycles n) := by
+  exact Sigma.instFintype
+-- card
+theorem cycles_univ_card (n : Nval) :
+Fintype.card (Cycles n) = ∑(l : Cval n), n.1.choose l.1 * (l.1.factorial / (l.1 * 2)) := by
+  simp only [Fintype.card_sigma]
+  conv =>
+    enter [1,2]; ext l; enter [2]; ext S
+    rw [Cycle_univ_card]
+  simp only [SSn_card, Finset.univ_eq_attach, Finset.sum_const, Finset.card_attach, smul_eq_mul]
+/- =============================================== -/
+/- Universe of all cycles of length ≤ maxl -/
+def cycles_len_le (n : Nval) (maxl : ℕ) : Set (Cycles n) :=
+  { C : Cycles n | C.1.1 ≤ maxl }
+-- PROPERTIES
+-- finite
+noncomputable
+instance (maxl : ℕ) : Fintype (cycles_len_le n maxl) := by
+  exact Fintype.ofFinite ↑(cycles_len_le n maxl)
+-- card
+theorem cycles_len_le_card (n : Nval) (maxl : ℕ) :
+{ C : Cycles n | C.1.1 ≤ maxl }.toFinset.card =
+  ∑(i : {i : Cval n // i.1 ≤ maxl}), n.1.choose i.1.1 * (i.1.1.factorial / (i.1.1 * 2)) := by
+  conv =>
+    enter [2,2]; ext l; rw [←CyclesOflen_univ_card l.1]
+  simp only [Set.toFinset_setOf, Fintype.card_sigma, Finset.univ_eq_attach]
+  have h_split : (Finset.univ.filter (fun l : (Σ i, CyclesOflen i) ↦ l.fst.val ≤ maxl)) =
+        (Finset.univ.filter (fun l : Cval n ↦ l.1 ≤ maxl)).sigma (fun i ↦ Finset.univ) := by
+    ext Cl
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_sigma, and_true]
+  rw [h_split]
+  simp only [Finset.card_sigma, Finset.card_univ, Fintype.card_sigma, Finset.univ_eq_attach,
+    Cycle_univ_card, Finset.sum_const, Finset.card_attach, smul_eq_mul]
+  rw [←Finset.sum_subtype_eq_sum_filter]; simp only [Finset.subtype_univ]
+/- =============================================== -/
+/- Universe of all cyclesets containing ≤ maxc cycles of length ≥ minc -/
+def G_cycles_len_le_count_ge (n : Nval) (maxl minc: ℕ) :=
+  { C : cycles_len_le n maxl | CycleLen C.1.2.2 ≥ minc }
+-- PROPERTIES
+-- finite
+noncomputable
+instance (n : Nval)(maxl minc : ℕ) : Fintype (G_cycles_len_le_count_ge n maxl minc) := by
+  exact Fintype.ofFinite ↑(G_cycles_len_le_count_ge n maxl minc)
+/- =============================================== -/
+/- The set of all Graphs containing ≤ maxc cycles of length ≥ minc -/
+def F_cycles_len_le_count_ge (n : Nval) (maxl minc: ℕ) :=
+  ⋃( C : G_cycles_len_le_count_ge n maxl minc ), F_EsubG n (CycleToPEK C.1.1.2.2)
+/- =============================================== -/
+/- Graph has Cycle -/
+abbrev hasCycle {n}(f : ΩK n)(C : Cycles n) :=
+  ∀(e : CycleToPEK C.2.2), f e = true
+-- PROPERTIES
+@[grind =_]
+theorem hasCycle_iff_inEdgeSet {n}(f : ΩK n)(C : Cycles n) :
+  hasCycle f C ↔ f ∈ F_EsubG n (CycleToPEK C.snd.snd) := by
+  constructor
+  · intro h; unfold hasCycle at h
+    unfold F_EsubG; simp_all only [Subtype.forall, SimpleGraph.edgeSet_top, Set.mem_setOf_eq,
+      not_false_eq_true, implies_true]
+  · intro h; unfold F_EsubG at h;unfold hasCycle; intro e
+    have := h (e); trivial
+
+/- =============================================== -/
+/- Set of all cycles in a Graph as Edgesets -/
+abbrev G_cycles {n}(f : ΩK n) : Set (Cycles n) :=
+  { C | hasCycle f C }
+-- PROPERTIES
+-- finite
+noncomputable
+instance {n}(f : ΩK n): Fintype (G_cycles f) := by
+  exact setFintype (G_cycles f)
+/- =============================================== -/
+/- Set of all cycles with length ≤l in a Graph -/
+abbrev G_cycles_oflen_le {n}(f : ΩK n)(l : Cval n) :=
+  { C | hasCycle f C ∧ CycleLen C.2.2 ≤ l.1}
+/- =============================================== -/
+/- How many cycles of cycle C are in a graph -/
+noncomputable
+def G_cycles_C_count {n}(f : ΩK n)(C : Cycles n) : ℕ :=
+  if hasCycle f C then 1 else 0
+/- =============================================== -/
+/- Number of cycles with length ≤l in Graph -/
+noncomputable
+abbrev G_cycles_oflen_le_count {n}(f : ΩK n)(l : Cval n) : ℕ :=
+  (G_cycles_oflen_le f l).toFinset.card
+/- Reduction to Edgeset -/
+abbrev G_cycles_oflen_ge_red {n}(f : ΩK n)(l : Cval n) : PEK n :=
+  ⋃₀ ( ((G_cycles_oflen_le f l).image (fun (C : Cycles n) ↦ CycleToPEK C.2.2)) : PPEK n )
+/- =============================================== -/
+
 
 section Probability
 open MeasureTheory
@@ -1029,12 +1152,37 @@ open scoped ENNReal NNReal
 /- =============================================== -/
 /- The Expected number of one specific cycle of length l -/
 noncomputable
+def E_cycle (n : Nval)(C : Cycles n) :=
+  let M := (EKμ p n);
+  ∑(f : ΩK n), (G_cycles_C_count f C) * M.real {f}
+-- PROPERTIES
+-- Expected number of cycle C appearing in Graph is equivalent to its Probability
+theorem E_cycle_eq_Pr (n : Nval)(C : Cycles n) :
+  E_cycle p n C = Pr_EsubG p n (CycleToPEK C.2.2) := by
+  unfold E_cycle G_cycles_C_count Pr_EsubG
+  simp only [Subtype.forall, SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Nat.cast_ite, Nat.cast_one,
+    CharP.cast_eq_zero, ite_mul, one_mul, zero_mul]
+  simp_rw [Finset.sum_ite, Finset.sum_const_zero, add_zero]
+  simp only [sum_measureReal_singleton]
+  congr
+  ext f
+  rw [←hasCycle_iff_inEdgeSet]
+  simp only [Subtype.forall, SimpleGraph.edgeSet_top, Set.mem_setOf_eq, Finset.coe_filter,
+    Finset.mem_univ, true_and]
+-- DEPRECATED!
+private noncomputable
 def Ecyc_one (S : SSn n l) (C : Cycle S) : ℝ :=
   Pr_EsubG p n (CycleToPEK C)
--- PROPERTIES
 -- eval = p^l
+theorem Ecycle_eval (n : Nval)(C : Cycles n) :
+  E_cycle p n C = p.1^(C.1.1) := by
+  rw [E_cycle_eq_Pr]; simp only [PrE_subs]
+  congr
+  convert CycleToPEK_toCard C.2.2
+  exact Set.ncard_eq_toFinset_card' (CycleToPEK C.snd.snd)
+-- DEPRECATED!
 @[simp, grind =]
-theorem Ecyc_len_eval (S : SSn n l) (C : Cycle S) :
+theorem Ecyc_len_eval {n}{l}(S : SSn n l) (C : Cycle S) :
   Ecyc_one n p l S C = p.1^(l.1) := by
   unfold Ecyc_one
   simp only [PrE_subs]
@@ -1042,72 +1190,98 @@ theorem Ecyc_len_eval (S : SSn n l) (C : Cycle S) :
   convert CycleToPEK_toCard C
   exact Set.ncard_eq_toFinset_card' (CycleToPEK C)
 /- =============================================== -/
-/- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-   We shall assume Linearity of expected values
-   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -/
+/- Expected number of length ≤ l cycles -/
+noncomputable
+def E_cycle_ofLen_le (n : Nval)(maxl : ℕ) : ℝ :=
+  let M := (EKμ p n);
+  if x : 3 ≤ maxl ∧ maxl ≤ n.1 then
+  ∑(f : ΩK n), ( G_cycles_oflen_le_count f ⟨maxl,by simp[x],by simp[x]⟩ ) * M.real {f}
+  else
+  0
+-- Expected number of length ≤ l cycles is equal to the sum of singular expected values
+-- over all Cycles of length ≤ l
+@[simp]
+theorem E_cycle_ofLen_eq_E_cycle_sum (n : Nval)(maxl : ℕ) :
+  E_cycle_ofLen_le p n maxl =
+  ∑(i : {i : Cval n // i.1 ≤ l.1}),
+  ∑(C : CyclesOflen i.1), E_cycle p n ⟨i,C⟩ := by
+  sorry
+-- eval = The thing we want in main
+theorem E_cycle_ofLen_le_eval (n : Nval)(maxl : ℕ) :
+  E_cycle_ofLen_le p n maxl =
+    ∑(i : {i : Cval n // i.1 ≤ maxl}),
+    n.1.choose i.1.1 * i.1.1.factorial / (2 * i.1.1) * p.1^(i.1.1) := by
+  sorry
 /- =============================================== -/
-/- Expected number of length l cycles given a Vertex set-/
+/- Probability that there are more than minc cycles of length maxl -/
 noncomputable
-def Ecyc_ofPVK (S : SSn n l) : ℝ :=
-  ∑(C : Cycle S), Ecyc_one n p l S C
--- PROPERTIES
--- eval = l!/(2l) * p^l
-@[simp, grind =]
-theorem Ecyc_ofPVK_eval (S : SSn n l) :
-  Ecyc_ofPVK n p l S = l.1.factorial / (2 * l.1) * p.1^(l.1) := by
-  unfold Ecyc_ofPVK
-  simp only [Ecyc_len_eval, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_eq_mul_right_iff,
-    pow_eq_zero_iff', NNReal.coe_eq_zero, ne_eq]
-  left
-  rw [Cycle_univ_card S, mul_comm l.1]
-  obtain ⟨l,lp,bound⟩ := l
-  simp_all only
-  rw [Nat.cast_div]
-  pick_goal 2; {
-    clear S bound
-    induction' lp with l bd ih
-    · simp only [Nat.reduceMul, Nat.factorial, Nat.succ_eq_add_one, Nat.reduceAdd, zero_add,
-      mul_one, dvd_refl]
-    · unfold Nat.factorial
-      rw [mul_comm]
-      refine Nat.mul_dvd_mul ?_ ?_
-      · simp only [Nat.succ_eq_add_one, dvd_refl]
-      · exact dvd_of_mul_right_dvd ih
-  }
-  pick_goal 2; { by_contra cnt; push_cast at cnt; simp_all only [mul_eq_zero, OfNat.ofNat_ne_zero,
-    Nat.cast_eq_zero, false_or]; subst cnt; contradiction }
-  push_cast; rfl
+def Cycles_count_le_ge (n : Nval)(maxl minc : ℕ):=
+let M := (EKμ p n);
+  if x : 3 ≤ maxl ∧ maxl ≤ n.1 then
+  M.real {f | G_cycles_oflen_le_count f ⟨maxl,by simp[x],by simp[x]⟩ ≥ minc}
+  else
+  0
 /- =============================================== -/
-/- Expected number of length l cycles -/
-noncomputable
-def Ecyc_len_one : ℝ :=
-  ∑(S : SSn n l), Ecyc_ofPVK n p l S
-noncomputable
-def Ecyc_len_one' (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : 3 ≤ l)(h2 : l ≤ n) : ℝ :=
-  let n : Nval := ⟨n, h0⟩;
-  let l : Cval n := ⟨l,h1,h2⟩;
-  Ecyc_len_one n p l
--- PROPERTIES
--- eval = (n choose l) * l!/(2l) * p^l
-@[simp, grind =]
-theorem Ecyc_len_one_eval :
-  Ecyc_len_one n p l = n.1.choose l.1 * l.1.factorial / (2 * l.1) * p.1^(l.1) := by
-  unfold Ecyc_len_one; simp only [Finset.univ_eq_attach, Ecyc_ofPVK_eval, Finset.sum_const,
-    Finset.card_attach, nsmul_eq_mul]
-  rw [SSn_card]
-  grind only [cases eager Subtype]
-/- =============================================== -/
-/- Expected number of length ≤l cycles -/
-noncomputable
-def Ecyc_len_range_le {n} (lmax : Cval n) : ℝ :=
-  ∑(i : Fin (lmax.1 - 3)), Ecyc_len_one n p ⟨i + 3,
-    by exact Nat.le_add_left 3 i,
-    by have:=i.2;have:=lmax.3;omega ⟩
-/- unfolded version -/
-noncomputable
-def Ecyc_len_range_le' (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : l ≤ n)(_ : 3 ≤ l) : ℝ :=
-  ∑(i : Fin (l - 3)), Ecyc_len_one' p n (i+3) h0 (by omega) (by omega)
-/- =============================================== -/
+/- THE MARKOV INEQUALITY -/
+theorem EcycToPcyc_markov (n : Nval)(maxl minc : ℕ)(h : minc > 0) :
+  Cycles_count_le_ge p n maxl minc ≤ E_cycle_ofLen_le p n maxl / (minc : ℝ) := by
+  by_cases cs : 3 ≤ maxl ∧ maxl ≤ n.1
+  · unfold Cycles_count_le_ge E_cycle_ofLen_le
+    set M := (EKμ p n)
+    simp only [cs, and_self, ↓reduceDIte]
+    simp_rw [Measure.real_def]
+    rw [←ENNReal.toReal_natCast]
+    conv =>
+      enter [2,1,2]; ext f;
+      rw [←ENNReal.toReal_natCast]
+      rw [←ENNReal.toReal_mul]
+    rw [←ENNReal.toReal_sum]
+    pick_goal 2; {
+      intro f mem;unfold G_cycles_oflen_le_count G_cycles_oflen_le
+      refine ENNReal.ofReal_toReal_eq_iff.mp ?_
+      simp only [Subtype.forall, SimpleGraph.edgeSet_top, Set.mem_setOf_eq, CycleLen_eval,
+        Set.toFinset_setOf, ENNReal.toReal_mul, ENNReal.toReal_natCast, Nat.cast_nonneg,
+        ENNReal.ofReal_mul, ENNReal.ofReal_natCast, ne_eq, measure_ne_top, not_false_eq_true,
+        ENNReal.ofReal_toReal]
+      }
+    rw [←ENNReal.toReal_div, ENNReal.toReal_le_toReal]
+    pick_goal 2; { simp only [Set.toFinset_card, Set.coe_setOf, Subtype.forall,
+      SimpleGraph.edgeSet_top, Set.mem_setOf_eq, CycleLen_eval, ge_iff_le, ne_eq, measure_ne_top,
+      not_false_eq_true] }
+    pick_goal 2; {
+      refine ENNReal.div_ne_top ?_ ?_
+      · simp only [Set.toFinset_card, Set.coe_setOf, Subtype.forall, SimpleGraph.edgeSet_top,
+        Set.mem_setOf_eq, CycleLen_eval, ne_eq, ENNReal.sum_eq_top, Finset.mem_univ, true_and,
+        not_exists]; intro f
+        refine ENNReal.mul_ne_top ?_ ?_
+        · simp only [Subtype.forall, SimpleGraph.edgeSet_top, Set.mem_setOf_eq, CycleLen_eval,
+          ne_eq, ENNReal.natCast_ne_top, not_false_eq_true]
+        · simp only [ne_eq, measure_ne_top, not_false_eq_true]
+      · simp only [ne_eq, Nat.cast_eq_zero]; linarith
+      }
+    obtain ⟨cs1,cs2⟩ := cs
+    have AE :
+      AEMeasurable ( fun f ↦ (G_cycles_oflen_le_count f ⟨maxl,cs1,cs2⟩ : ℝ≥0∞) ) M := by
+      apply Measurable.aemeasurable
+      unfold G_cycles_oflen_le_count G_cycles_oflen_le
+      simp only [Subtype.forall, SimpleGraph.edgeSet_top, Set.mem_setOf_eq, CycleLen_eval,
+        Set.toFinset_setOf]
+      simp_all only [gt_iff_lt, Subtype.forall, SimpleGraph.edgeSet_top,
+        Set.mem_setOf_eq, CycleLen_eval]
+      apply Measurable.of_discrete
+    have h0 : (minc : ℝ≥0∞) ≠ 0 := by
+      clear AE M; simp_all only [gt_iff_lt, ne_eq,
+      Nat.cast_eq_zero];linarith
+    have t :=
+      meas_ge_le_lintegral_div
+      AE (h0) (by simp only [ne_eq, ENNReal.natCast_ne_top, not_false_eq_true])
+    simp only at t
+    rw [lintegral_fintype (μ := M)] at t
+    grw [←t]
+    simp only [Set.toFinset_card, Set.coe_setOf, Subtype.forall, SimpleGraph.edgeSet_top,
+      Set.mem_setOf_eq, CycleLen_eval, ge_iff_le, Nat.cast_le, le_refl]
+  · unfold Cycles_count_le_ge E_cycle_ofLen_le
+    simp only [cs, ↓reduceDIte, zero_div, le_refl]
 
 end Probability
 

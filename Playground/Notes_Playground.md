@@ -576,4 +576,85 @@ theorem PermListRel_iff {n}{l}(S : SSn n l) :
 -- /- len of cycle (C) -/
 -- def PEC_cyc_len {n}{l}{S : SSn n l}(C : PEC S) :=
 --   Quotient.lift (fun c ↦ c.1.length) (PermListRel_imp_eq_len S) C
+
+
+noncomputable
+def Ecyc_len_one : ℝ :=
+  ∑(S : SSn n l), Ecyc_ofPVK n p l S
+noncomputable
+def Ecyc_len_one' (p : ℙval)(n l : ℕ)(h0 : 0 < n)(h1 : 3 ≤ l)(h2 : l ≤ n) : ℝ :=
+  let n : Nval := ⟨n, h0⟩;
+  let l : Cval n := ⟨l,h1,h2⟩;
+  Ecyc_len_one n p l
+-- PROPERTIES
+-- eval = (n choose l) * l!/(2l) * p^l
+@[simp, grind =]
+theorem Ecyc_len_one_eval :
+  Ecyc_len_one n p l = n.1.choose l.1 * l.1.factorial / (2 * l.1) * p.1^(l.1) := by
+  unfold Ecyc_len_one; simp only [Finset.univ_eq_attach, Ecyc_ofPVK_eval, Finset.sum_const,
+    Finset.card_attach, nsmul_eq_mul]
+  rw [SSn_card]
+  grind only [cases eager Subtype]
+/- =============================================== -/
+/- Expected number of cycles with length ≤ maxl -/
+noncomputable
+def E_cycle_len_le (n : Nval) (maxl : ℕ) :=
+  ∑(i : {i : Cval n // i.1 ≤ maxl}),∑(S : SSn n i),∑(C : Cycle S), Pr_EsubG p n (CycleToPEK C)
+-- eval to some sum
+@[simp]
+theorem E_cycle_len_le_eval (n : Nval) (maxl : ℕ) :
+  E_cycle_len_le p n maxl =
+    ∑(i : {i : Cval n // i.1 ≤ maxl}),
+    n.1.choose i.1.1 * i.1.1.factorial / (2 * i.1.1) * p.1^(i.1.1) := by
+  unfold E_cycle_len_le
+  simp only [PrE_subs, NNReal.coe_sum, NNReal.coe_mul, NNReal.coe_div,
+    NNReal.coe_natCast, NNReal.coe_ofNat, NNReal.coe_pow]
+  congr
+  ext l
+  rw [←Ecyc_len_one_eval n p l.1]
+  unfold Ecyc_len_one
+  congr
+  ext S
+  unfold Ecyc_ofPVK
+  congr
+  ext C
+  simp only [Ecyc_len_eval]
+  congr
+  convert CycleToPEK_toCard C; exact Set.ncard_eq_toFinset_card' (CycleToPEK C)
+
+  /- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+   We shall assume Linearity of expected values
+   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! -/
+/- =============================================== -/
+/- Expected number of length l cycles given a Vertex set-/
+noncomputable
+def Ecyc_ofPVK (S : SSn n l) : ℝ :=
+  ∑(C : Cycle S), Ecyc_one n p l S C
+-- PROPERTIES
+-- eval = l!/(2l) * p^l
+@[simp, grind =]
+theorem Ecyc_ofPVK_eval (S : SSn n l) :
+  Ecyc_ofPVK n p l S = l.1.factorial / (2 * l.1) * p.1^(l.1) := by
+  unfold Ecyc_ofPVK
+  simp only [Ecyc_len_eval, Finset.sum_const, Finset.card_univ, nsmul_eq_mul, mul_eq_mul_right_iff,
+    pow_eq_zero_iff', NNReal.coe_eq_zero, ne_eq]
+  left
+  rw [Cycle_univ_card S, mul_comm l.1]
+  obtain ⟨l,lp,bound⟩ := l
+  simp_all only
+  rw [Nat.cast_div]
+  pick_goal 2; {
+    clear S bound
+    induction' lp with l bd ih
+    · simp only [Nat.reduceMul, Nat.factorial, Nat.succ_eq_add_one, Nat.reduceAdd, zero_add,
+      mul_one, dvd_refl]
+    · unfold Nat.factorial
+      rw [mul_comm]
+      refine Nat.mul_dvd_mul ?_ ?_
+      · simp only [Nat.succ_eq_add_one, dvd_refl]
+      · exact dvd_of_mul_right_dvd ih
+  }
+  pick_goal 2; { by_contra cnt; push_cast at cnt; simp_all only [mul_eq_zero, OfNat.ofNat_ne_zero,
+    Nat.cast_eq_zero, false_or]; subst cnt; contradiction }
+  push_cast; rfl
 ```
