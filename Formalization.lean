@@ -15,16 +15,16 @@ set_option linter.style.commandStart false
 set_option linter.style.induction false
 
 open API_ℙ API_𝕀 API_ℂ Real
-open scoped API_ℙ API_ℂ API_𝕀 NNReal Real
+open scoped API_ℂ API_𝕀 NNReal Real
 
 /-===============================================================-/
 /- Start of part 1 -/
 #print E_cycle_ofLen_le -- our 𝔼
-lemma P1_1 (p : ℙval)(n l : ℕ)(h0 : 0 < n) :
-let N : API_𝔾.Nval := ⟨n,h0⟩;
+lemma P1_1 (p : ℙval)(n l : ℕ):
+∀(n : ℕ)(h : 0 < n), let N : API_𝔾.Nval := ⟨n,h⟩;
   E_cycle_ofLen_le p N l ≤ (l:ℝ) * ((n:ℝ) * p.1.toReal)^(l:ℝ) := by
   -- PROOF STARTS HERE
-  intro N; rw [E_cycle_ofLen_le_eval]
+  intro n h N; rw [E_cycle_ofLen_le_eval]
   -- [TODO]
   sorry
 /-===============================================================-/
@@ -33,6 +33,8 @@ let N : API_𝔾.Nval := ⟨n,h0⟩;
 
 -- Probability that the number of cycles with l ≤ maxl is ≥ minc
 #print Pr_cycles_count_le_ge
+-- The cycle with length ≤ maxl counter
+#print G_cycles_oflen_le_count
 
 lemma P1_2 (p : ℙval)(maxl minc : ℕ)(hminc : minc > 0):
 ∀(n : ℕ)(h : 0 < n), let N : API_𝔾.Nval := ⟨n,h⟩; ∃(c : ℝ),
@@ -59,6 +61,56 @@ let N : API_𝔾.Nval := ⟨n,h⟩;
 /-===============================================================-/
 /- LIMITS PROOF -/
 -- [TODO]
+/-===============================================================-/
+
+/-===============================================================-/
+/- PART 3 -/
+/-===============================================================-/
+
+/-===============================================================-/
+/- THE EXTRACTION-/
+/- If probability < 1 then there exists a graph in the complement -/
+theorem anti_graph_exists (p : ℙval) (n : API_𝔾.Nval) :
+  ∀(F : Set (ΩK n)), (EKμ p n).real F < 1 →  ∃f, f ∈ Fᶜ := by {
+    intro F h
+    by_contra cnt; simp only [Set.mem_compl_iff, not_exists, not_not] at cnt
+    have t : F = Set.univ := by exact Set.eq_univ_of_univ_subset fun ⦃a⦄ a_1 ↦ cnt a
+    have t0 : (EKμ p n).real F = 1 := by rw [t];exact MeasureTheory.measureReal_univ_eq_one
+    rw [t0] at h; simp only [lt_self_iff_false] at h
+  }
+/- Gives us a graph G for which α(G) < sz and which has < minc cycles of length ≤ maxl.
+   Given that the probabilities of both add up to ≤ n and that both graphs are defined on
+   n vertices! -/
+theorem anti_graph (p : ℙval) (maxl minc sz : ℕ) :
+∀(n : ℕ)(h : 0 < n), let N : API_𝔾.Nval := ⟨n,h⟩;
+  Pr_cycles_count_le_ge p N maxl minc < 1/(2 : ℝ) →
+  PrI_αG_gt p N sz < 1/(2 : ℝ) →
+  ∃(f : ΩK N), G_cycles_oflen_le_count f maxl < minc ∧ αG f < sz := by
+  intro n h N pr1 pr2
+  unfold Pr_cycles_count_le_ge at pr1; simp only at pr1
+  unfold PrI_αG_gt at pr2
+  set M := (EKμ p N).real
+  set F1 := {f | G_cycles_oflen_le_count f maxl ≥ minc}
+  set F2 := (G_αG_ge N sz)
+  have t0 : M (F1 ∪ F2) ≤ M F1 + M F2 := by exact MeasureTheory.measureReal_union_le F1 F2;
+  have t1 : M F1 + M F2 < 1 := by linarith
+  grw [←t0] at t1
+  apply ( anti_graph_exists p N (F1 ∪ F2) ) at t1
+  clear pr1 pr2 t0
+  obtain ⟨af,t1⟩ := t1
+  simp only [Set.compl_union, Set.mem_inter_iff] at t1; obtain ⟨s1,s2⟩ := t1
+  -- rewrite them back into sets
+  use af
+  constructor
+  · subst F1
+    simp only [Set.mem_setOf_eq, ge_iff_le, Set.mem_compl_iff, not_le] at s1
+    assumption
+  · subst F2
+    rw [
+      ←Set.mem_setOf_eq (p := fun f ↦ αG f < sz),
+      ←G_αG_lt,
+      αG_lt_eq_ge_complement
+    ]; assumption
 /-===============================================================-/
 
 theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
