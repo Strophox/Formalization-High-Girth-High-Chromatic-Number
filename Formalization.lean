@@ -28,7 +28,8 @@ let N : API_𝔾.Nval := ⟨n,h0⟩;
   -- [TODO]
   sorry
 /-===============================================================-/
-/- Intermission where Markov inequality is used then Back to normal probability -/
+/- Intermission where Markov inequality is used and then
+   back to normal probability -/
 
 -- Probability that the number of cycles with l ≤ maxl is ≥ minc
 #print Pr_cycles_count_le_ge
@@ -55,7 +56,7 @@ let N : API_𝔾.Nval := ⟨n,h⟩;
   intro N; grw [UB_PrI_αG_gt]
   --[TODO]
   sorry
-
+/-===============================================================-/
 /- LIMITS PROOF -/
 -- [TODO]
 /-===============================================================-/
