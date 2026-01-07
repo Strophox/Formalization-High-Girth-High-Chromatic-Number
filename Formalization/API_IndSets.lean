@@ -177,20 +177,20 @@ variable (sz : SZval n)
 /- =============================================== -/
 /- The set of all possible vertexsets of size sz -/
 noncomputable
-abbrev IndSets_ofsz := (Set.univ : Set (VK n)).toFinset.powersetCard sz.1
+abbrev IndSets_ofsz (sz : ℕ) := (Set.univ : Set (VK n)).toFinset.powersetCard sz
 -- Properties
 -- finite
 noncomputable
-instance : Fintype (IndSets_ofsz n sz) := by
+instance (sz : ℕ) : Fintype (IndSets_ofsz n sz) := by
   exact (IndSets_ofsz n sz).fintypeCoeSort
 -- card = n choose sz
-theorem IndSets_ofsz_card :
-  (IndSets_ofsz n sz).card = n.1.choose sz.1 := by
+theorem IndSets_ofsz_card (sz : ℕ) :
+  (IndSets_ofsz n sz).card = n.1.choose sz := by
   unfold IndSets_ofsz
   simp only [Set.toFinset_univ, Finset.card_powersetCard, Finset.card_univ, Fintype.card_fin]
 -- mem card = sz
-theorem IndSets_ofsz_mem_card :
-  ∀(I : (IndSets_ofsz n sz)), I.1.card = sz.1 := by
+theorem IndSets_ofsz_mem_card (sz : ℕ) :
+  ∀(I : (IndSets_ofsz n sz)), I.1.card = sz := by
   {
     intros I;unfold IndSets_ofsz at I; obtain ⟨I,ip⟩ := I; simp only
     grind only [= Finset.mem_powersetCard]
@@ -302,24 +302,25 @@ theorem αG_ge {n}(f : ΩK n)(sz : ℕ):
 
 /- =============================================== -/
 /- The set of all graphs having α(G) ≥ sz -/
-abbrev G_αG_ge {n}(sz : SZval n) := { (f : ΩK n) | αG f ≥ sz.1 }
+abbrev G_αG_ge (sz : ℕ) : Set (ΩK n) := { (f : ΩK n) | αG f ≥ sz }
 /- The set of all graphs having α(G) < sz -/
-abbrev G_αG_lt {n}(sz : SZval n) := { (f : ΩK n) | αG f < sz.1 }
+abbrev G_αG_lt (sz : ℕ) := { (f : ΩK n) | αG f < sz }
 -- PROPERTIES
 -- The set of all graphs having α(G) < sz is equal to the complement of α(G) ≥ sz
-theorem αG_lt_eq_ge_complement (sz : SZval n) : G_αG_lt sz = (G_αG_ge sz)ᶜ := by
+theorem αG_lt_eq_ge_complement (sz : ℕ) :
+  G_αG_lt n sz = (G_αG_ge n sz)ᶜ := by
   unfold G_αG_ge G_αG_lt
   ext f; simp only [Set.mem_setOf_eq, ge_iff_le, Set.mem_compl_iff, not_le]
 /- =============================================== -/
 /- The set of all graphs having at least one independent set of size sz -/
-abbrev F_any_ind_ofsz {n}(sz : SZval n) :=
+abbrev F_any_ind_ofsz {n}(sz : ℕ) :=
   ⋃(I ∈ (IndSets_ofsz n sz)),(F_EdisjG n (EK_sub n I))
 -- PROPERTIES
 /- =============================================== -/
 /- General Theorems -/
 -- A graph G has at least one independent set of size sz iff α(G) ≥ sz
-theorem F_any_ind_ofsz_iff_αG_ge {n}(sz : SZval n)(f : ΩK n) :
-  f ∈ F_any_ind_ofsz sz ↔ αG f ≥ sz.1 := by
+theorem F_any_ind_ofsz_iff_αG_ge {n}(sz : ℕ)(f : ΩK n) :
+  f ∈ F_any_ind_ofsz sz ↔ αG f ≥ sz := by
   constructor
   · intro h; simp only [Set.mem_iUnion, Finset.mem_powersetCard, Set.toFinset_univ,
     Finset.subset_univ, true_and, exists_prop] at h
@@ -376,9 +377,9 @@ theorem F_any_ind_ofsz_iff_αG_ge {n}(sz : SZval n)(f : ΩK n) :
     unfold isMax_Indset at spec
     have t := IndSetG_le f ⟨Imax.1.toFinset.card,MaxIndSet_card Imax⟩ Imax
     simp only [Set.toFinset_card, forall_const] at t
-    have t0 : sz.val ≤ Fintype.card ↑↑Imax := by
+    have t0 : sz ≤ Fintype.card ↑↑Imax := by
       simp only [Set.toFinset_card] at h; trivial
-    specialize (t sz.1 t0); obtain ⟨I',ip⟩ := t
+    specialize (t sz t0); obtain ⟨I',ip⟩ := t
     use I'.1.toFinset; constructor
     · simpa only [Set.toFinset_card]
     · clear h spec t0 ip
@@ -406,8 +407,8 @@ theorem F_any_ind_ofsz_iff_αG_ge {n}(sz : SZval n)(f : ΩK n) :
 -- The set of all graphs having at least one independent set of size sz
 -- is EQUAL to
 -- The set of all graphs having α(G) ≥ sz
-theorem F_any_ind_ofsz_eq_G_αG_ge {n}(sz : SZval n) :
-  F_any_ind_ofsz sz = G_αG_ge sz := by
+theorem F_any_ind_ofsz_eq_G_αG_ge (sz : ℕ) :
+  F_any_ind_ofsz sz = G_αG_ge n sz := by
   ext f
   constructor
   · intro h; rw [F_any_ind_ofsz_iff_αG_ge] at h
@@ -440,32 +441,26 @@ theorem PrI_val {n}(I : PVK n) : (PrI p I) = (1-p.1)^(Nat.choose I.ncard 2) := b
 /- =============================================== -/
 /- Probability of a graph having α(G) ≥ sz -/
 noncomputable
-def PrI_αG_gt (p : ℙval){n}(sz : SZval n) :=
-  (EKμ p n).real ( G_αG_ge sz )
--- unfolded
-noncomputable
-def PrI_αG_gt' (p : ℙval)(n sz : ℕ)(bd : 0 < n)(h : sz ≤ n) :=
-  let n : Nval := ⟨n,bd⟩;
-  let sz : SZval n := ⟨sz,h⟩;
-  PrI_αG_gt p sz
+def PrI_αG_gt (p : ℙval)(n : Nval)(sz : ℕ) :=
+  (EKμ p n).real ( G_αG_ge n sz )
 /- =============================================== -/
 /- Probability of a graph having at least one independent set of size sz -/
 noncomputable
-def PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
+def PrI_ofsz (p : ℙval)(sz : ℕ) :=
   (EKμ p n).real ( F_any_ind_ofsz sz )
 -- upper bounded
 private noncomputable
-def UB_PrI_ofsz (p : ℙval){n}(sz : SZval n) :=
+def UB_PrI_ofsz (p : ℙval)(sz : ℕ) :=
   ∑(I ∈ (IndSets_ofsz n sz)), Pr_EdisjG p n (EK_sub n I)
 -- eval = n choose sz * (1 - p)^(sz choose 2).
-private lemma UB_PrI_ofsz_eval (p : ℙval){n}(sz : SZval n) :
-  UB_PrI_ofsz p sz = (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
+private lemma UB_PrI_ofsz_eval (p : ℙval)(n : Nval)(sz : ℕ) :
+  UB_PrI_ofsz n p sz = (n.1.choose sz) * (1 - p.1)^(sz.choose 2) := by
   unfold UB_PrI_ofsz
   simp [EK_sub_card]
-  trans ∑ x ∈ IndSets_ofsz n sz, (1 - ↑p.val) ^ sz.val.choose 2
+  trans ∑ x ∈ IndSets_ofsz n sz, (1 - ↑p.val) ^ sz.choose 2
   · apply Finset.sum_congr rfl
     intros x hx
-    have t : x.card = sz.1 := by exact IndSets_ofsz_mem_card n sz ⟨x,hx⟩
+    have t : x.card = sz := by exact IndSets_ofsz_mem_card n sz ⟨x,hx⟩
     rw [t]
   · rw [Finset.sum_const]
     simp only [nsmul_eq_mul] -- Fixes ℕ * ℝ typing issues
@@ -474,8 +469,8 @@ private lemma UB_PrI_ofsz_eval (p : ℙval){n}(sz : SZval n) :
    upper bounded by !!! (n choose sz) * (1 - p)^(sz choose 2) !!!
    Note that this is equivalent to the Probability that [α(G) ≥ sz].
    [[αG_ge]] gives us the explicit proof of that fact -/
-theorem UB_PrI_αG_gt (p : ℙval){n}(sz : SZval n):
-  (PrI_αG_gt p sz) ≤ (n.1.choose sz.1) * (1 - p.1)^(sz.1.choose 2) := by
+theorem UB_PrI_αG_gt (p : ℙval)(sz : ℕ):
+  (PrI_αG_gt p n sz) ≤ (n.1.choose sz) * (1 - p.1)^(sz.choose 2) := by
   let IndSZ := (IndSets_ofsz n sz);
   rw [←UB_PrI_ofsz_eval]
   unfold PrI_αG_gt; rw [←F_any_ind_ofsz_eq_G_αG_ge]

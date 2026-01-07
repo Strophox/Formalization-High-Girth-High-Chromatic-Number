@@ -15,30 +15,50 @@ set_option linter.style.commandStart false
 set_option linter.style.induction false
 
 open API_ℙ API_𝕀 API_ℂ Real
-open scoped API_ℂ API_𝕀 NNReal Real
+open scoped API_ℙ API_ℂ API_𝕀 NNReal Real
 
+/-===============================================================-/
 /- Start of part 1 -/
 #print E_cycle_ofLen_le -- our 𝔼
 lemma P1_1 (p : ℙval)(n l : ℕ)(h0 : 0 < n) :
-  E_cycle_ofLen_le p ⟨n,h0⟩ l ≤ (l:ℝ) * ((n:ℝ) * p.1.toReal)^(l:ℝ) := by
+let N : API_𝔾.Nval := ⟨n,h0⟩;
+  E_cycle_ofLen_le p N l ≤ (l:ℝ) * ((n:ℝ) * p.1.toReal)^(l:ℝ) := by
+  -- PROOF STARTS HERE
+  intro N; rw [E_cycle_ofLen_le_eval]
   -- [TODO]
   sorry
+/-===============================================================-/
 /- Intermission where Markov inequality is used then Back to normal probability -/
-#print Cycles_count_le_ge -- Probability
-#check EcycToPcyc_markov -- Markov inequality
--- [TODO]
-/- LIMITS PROOF into Axiom of choice (MUST USE CLASSICAL CHOOSE) -/
--- [TODO]
 
+-- Probability that the number of cycles with l ≤ maxl is ≥ minc
+#print Pr_cycles_count_le_ge
+
+lemma P1_2 (p : ℙval)(maxl minc : ℕ)(hminc : minc > 0):
+∀(n : ℕ)(h : 0 < n), let N : API_𝔾.Nval := ⟨n,h⟩; ∃(c : ℝ),
+  Pr_cycles_count_le_ge p N maxl minc ≤ 2 * maxl * n^(-c) := by
+  -- PROOF STARTS HERE
+  intro n np N
+  grw [EcycToPcyc_markov]; pick_goal 2; {linarith}
+  -- [TODO]
+  sorry
+/-===============================================================-/
+/- LIMITS PROOF -/
+-- [TODO]
+/-===============================================================-/
+
+/-===============================================================-/
 /- Start of part 2 -/
-lemma P2_1 (p : ℙval)(n sz : ℕ)(bd : 0 < n)(h : sz ≤ n):
-  (PrI_αG_gt' p n sz bd h) ≤ rexp 0 / sz.factorial := by
-  unfold PrI_αG_gt'; simp only; grw [UB_PrI_αG_gt]
-  simp only
+lemma P2_1 (p : ℙval)(n sz : ℕ)(h : 0 < n):
+let N : API_𝔾.Nval := ⟨n,h⟩;
+  (PrI_αG_gt p N sz) ≤ rexp 0 / sz.factorial := by
+  -- PROOF STARTS HERE
+  intro N; grw [UB_PrI_αG_gt]
   --[TODO]
   sorry
-/- LIMITS PROOF into Axiom of choice (MUST USE CLASSICAL CHOOSE) -/
+
+/- LIMITS PROOF -/
 -- [TODO]
+/-===============================================================-/
 
 theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
     ∃ (n : ℕ) (G : SimpleGraph (Fin n)), G.egirth > l ∧ G.chromaticNumber > k := by
