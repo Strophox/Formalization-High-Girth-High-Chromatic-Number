@@ -315,11 +315,6 @@ theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
   have P2 := P2_Extractor sorry sorry (1/2) (by linarith)
   obtain ⟨n2,bd2,P2⟩ := P2
 
-  -- [TODO] pass values into anti-graph
-  have P3 := anti_graph
-    sorry n2 bd2 sorry (n2/2) sorry
-    sorry/-P1[TODO]-/ sorry/-P2-/
-
 
   /- Show that for every cycle, removing a vertex x from a cycle v -> u x v -> u means either
      - there exist no other u -> v - disjoint path meaning cycle length of infinity
