@@ -316,7 +316,7 @@ def FinGraphToΩK : Fingraph n → ΩK n :=
     ⟩  e : ΩK n)
 /- =============================================== -/
 /- Equivalence
-   Ussage: .1 is from Function to Graph and .2 is from Graph to Function -/
+   Usage: .1 is from Function to Graph and .2 is from Graph to Function -/
 noncomputable
 def ΩK_EQ_FinGraph : ΩK n ≃ Fingraph n := {
   toFun := ΩKtoFinGraph n

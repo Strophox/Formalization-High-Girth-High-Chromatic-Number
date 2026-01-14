@@ -278,6 +278,23 @@ theorem MaxIndSetSpec {n}(f : ΩK n) :
 noncomputable
 abbrev MaxIndSet {n}(f : ΩK n) := Classical.choose (MaxIndSetSpec f)
 abbrev MaxIndSetP {n}(f : ΩK n) := Classical.choose_spec (MaxIndSetSpec f)
+-- The size of a maximal independent set is always > 0
+theorem MaxIndSet_LB {n}(f : ΩK n):
+  0 < (MaxIndSet f).1.toFinset.card := by
+  simp only [Set.toFinset_card]
+  generalize ch : (MaxIndSet f) = Imax
+  obtain spec := MaxIndSetP f
+  unfold MaxIndSet at ch
+  rw [ch] at spec; clear ch
+  unfold isMax_Indset at spec
+  have : ∃x, {x} ∈ IndSetsG f := by
+    use ⟨0,n.2⟩; unfold IndSetsG is_IndSetG;
+    simp only [ne_eq, Subtype.forall, Subtype.mk.injEq, Lean.Elab.WF.paramLet, Finset.mem_filter,
+      Finset.mem_univ, Set.mem_singleton_iff, true_and]
+    intro a ah b bh h; rw [ah,bh] at h; contradiction
+  obtain ⟨i,ip⟩ := this
+  specialize (spec ⟨{i},ip⟩); simp at spec; linarith
+
 /- =============================================== -/
 
 /- =============================================== -/
