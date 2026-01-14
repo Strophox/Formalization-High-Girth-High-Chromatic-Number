@@ -20,6 +20,7 @@ set_option linter.style.induction false
 
 open API_ℙ API_𝕀 API_ℂ Real
 open scoped API_ℂ API_𝕀 NNReal Real
+open MeasureTheory
 
 /-===============================================================-/
 /- Start of part 1 -/
@@ -253,6 +254,22 @@ lemma P1_Extractor (l : ℕ)(θ : ℝ≥0)(ht : θ < 1 / (l : ℝ)):
   rw [abs_of_nonneg] at prev
   pick_goal 2; { unfold Pr_cycles_count_le_ge; exact MeasureTheory.measureReal_nonneg }
   assumption
+/- proof of antitonicity -/
+lemma P1_anti (l : ℕ)(θ : ℝ≥0)(ht : θ < 1 / (l : ℝ))
+  (n : ℕ)(hn : n > 0)(n' : ℕ)(hn' : n' ≥ n) :
+  Pr_cycles_count_le_ge (pt ⟨n,hn⟩ l θ ht) ⟨n,hn⟩ l (⌈n/(2:ℝ)⌉.toNat)
+  ≥
+  Pr_cycles_count_le_ge (pt ⟨n',by linarith⟩ l θ ht) ⟨n',by linarith⟩ l (⌈n'/(2:ℝ)⌉.toNat)
+  := by
+  unfold Pr_cycles_count_le_ge; simp only
+  unfold pt; simp only [Set.toFinset_card, Set.coe_setOf, Subtype.forall,
+    SimpleGraph.edgeSet_top, Set.mem_setOf_eq, CycleLen_eval, ge_iff_le, Int.toNat_le]
+  simp_rw [Measure.real_def]
+  rw [ENNReal.toReal_le_toReal]
+  pick_goal 2; { apply measure_ne_top }
+  pick_goal 2; { apply measure_ne_top }
+  sorry
+
 /-===============================================================-/
 
 /-===============================================================-/
@@ -271,31 +288,42 @@ lemma rexp_UB : rexp 1 ≤ 3 := by
   #  Pr[α(G) ≥ x] ≤ e^( ln(n) - p/2 * (x-1)      )^x / ( x! )              by:reorder
   #  Pr[α(G) ≥ x] ≤ e^( ln(n) - p/2 * (⌈3/p * ln(n)⌉-1)      )^x / ( x! )  by:rw x
   ## Pr[α(G) ≥ x] ≤ e^0  / ( x! )                                          by:magic -/
-lemma P2_1 (p : ℙval)(n : ℕ)(h : 3 ≤ n)(h' : p.1 ≠ 0):
-let N : API_𝔾.Nval := ⟨n,by linarith⟩;
-let sz : ℕ := ⌈3 / p.1 * log n⌉.toNat;
-  (PrI_αG_gt p N sz) ≤ rexp 0 / sz.factorial := by
-  -- PROOF STARTS HERE
-  intro N sz; grw [UB_PrI_αG_gt]
+lemma P2_1 (l: ℕ)(θ : ℝ≥0)(hθ : θ < 1 / (l : ℝ)) :
+∀(n : ℕ)(_ : 3 ≤ n),
+  let p := pt ⟨n,by linarith⟩ l θ hθ;
+  (PrI_αG_gt p ⟨n,by linarith⟩ ⌈3 / p.1 * log n⌉.toNat) ≤
+  rexp 0 / ⌈3 / p.1 * log n⌉.toNat.factorial := by
+
+  intro n hn p; grw [UB_PrI_αG_gt]
+  have nonzero : 0 < p.1 := by {
+    subst p; simp only [pt]
+    positivity
+  }
+
   conv => enter [1,2,2]; rw [Nat.choose_two_right]
   conv => enter [1,1,1]; rw [Nat.choose_eq_descFactorial_div_factorial]
-  subst N; simp only
+
   have arith : (1 - ↑p.val) ≤ rexp (-p.1) := by
     exact one_sub_le_exp_neg ↑p.val
-  grw [arith];
-  pick_goal 2; { simp only [sub_nonneg, NNReal.coe_le_one, p.2] }
-  clear arith; rw [←exp_nat_mul, Nat.cast_div]
+  grw [arith]
+  pick_goal 2; { simp only [sub_nonneg, NNReal.coe_le_one, p.2] }; clear arith
+
+  set sz := ⌈3 / p.1 * log n⌉.toNat
+  rw [←exp_nat_mul, Nat.cast_div]
   pick_goal 2; { exact Nat.factorial_dvd_descFactorial n sz }
   pick_goal 2; { simp only [ne_eq, Nat.cast_eq_zero]; exact Nat.factorial_ne_zero sz }
+
   have arith : n.descFactorial sz ≤ n^sz := by
     exact Nat.descFactorial_le_pow n sz
   grw[arith];clear arith
+
   have arith : n^sz = rexp (log n * sz) := by
     rw [exp_mul,exp_log];
     · simp only [rpow_natCast]
     · simp only [Nat.cast_pos]; linarith
   norm_cast
   simp only [Nat.cast_pow, arith,div_mul_eq_mul_div]; clear arith
+
   rw [←exp_add,Nat.cast_div]
   pick_goal 2; {
     induction sz
@@ -312,6 +340,7 @@ let sz : ℕ := ⌈3 / p.1 * log n⌉.toNat;
   have arith1 : (⌈3 / p.1 * log n⌉.toNat : ℝ) = ⌈3 / p.1 * log n⌉ := by
     norm_cast
   subst sz; generalize x : ⌈3 / p.1 * log n⌉.toNat = sz
+
   rw [neg_div,neg_mul_comm,Nat.cast_sub,neg_sub]
   pick_goal 2; {
     subst x
@@ -322,9 +351,10 @@ let sz : ℕ := ⌈3 / p.1 * log n⌉.toNat;
     have : log n > 0 := by refine log_pos ?_; simp only [Nat.one_lt_cast]; linarith
     positivity
   }
+
   rw [mul_sub,←add_sub_assoc]; norm_cast; rw [mul_one]
   nth_rw 1 [←x]
-  -- SECTION
+
   have arith :
     (log ↑n + ↑(p.val / 2) - ↑(p.val / 2 * ↑⌈3 / ↑p.val * log ↑n⌉.toNat)) ≤ 0 := by {
       refine sub_nonpos.mpr ?_
@@ -344,67 +374,162 @@ let sz : ℕ := ⌈3 / p.1 * log n⌉.toNat;
         div_self, le_refl]
       · refine (le_log_iff_exp_le ?_).mpr ?_
         · simp only [Nat.cast_pos]; linarith
-        · grw [←h]
+        · grw [←hn]
           simp only [Nat.cast_ofNat]
           exact rexp_UB
     }
-  grw [arith]; simp only [exp_zero, one_pow, one_div, le_refl]
+  grw [arith]
+  simp only [exp_zero, one_pow, one_div, le_refl]
 /-===============================================================-/
 /- LIMITS PROOF
    ## lim n → ∞: Pr[α(G) ≥ x] → 0                                           by: ??? -/
-lemma P2_2 (p : ℙval)(hp : p.1 ≠ 0) :
-  Filter.Tendsto (fun n : { n : ℕ // n > 0 } ↦ (PrI_αG_gt p ⟨n.1,n.2⟩ ⌈3 / p.1 * log n.1⌉.toNat) )
+lemma P2_2 (l: ℕ)(θ : ℝ≥0)(hθ : θ < 1 / (l : ℝ)) :
+  Filter.Tendsto
+  (fun n : { n : ℕ // n > 0 } ↦
+    let p := pt ⟨n.1,n.2⟩ l θ hθ;
+    (PrI_αG_gt p ⟨n.1,n.2⟩ ⌈3 / p.1 * log n.1⌉.toNat) )
   Filter.atTop (nhds 0)
   := by
   have lowerbound :
     (Filter.Tendsto (fun n : { n : ℕ // n > 0 } ↦ (0 : ℝ) ) Filter.atTop (nhds 0) ) := by
     exact tendsto_const_nhds
   have upperbound :
-    (Filter.Tendsto (fun n : { n : ℕ // n > 0 } ↦ 1 / (⌈3 / p.1 * log n.1⌉.toNat.factorial : ℝ)) Filter.atTop (nhds 0) ) := by
+    (
+      Filter.Tendsto
+      (fun n : { n : ℕ // n > 0 } ↦
+        let p := pt ⟨n.1,n.2⟩ l θ hθ;
+        1 / (⌈3 / p.1 * log n.1⌉.toNat.factorial : ℝ))
+      Filter.atTop (nhds 0)
+    ) := by
     simp only [one_div]
     apply Filter.Tendsto.inv_tendsto_atTop
 
-    have h : ∀ (n : {n : ℕ // n > 0}),
-    (fun n ↦ ⌈3 / p.val * log n.1⌉.toNat) n ≤ (fun n ↦ (⌈3 / p.val * log n.1⌉.toNat.factorial : ℝ) ) n := by
+    have h :
+      ∀ (n : {n : ℕ // n > 0}), let p := pt ⟨n.1,n.2⟩ l θ hθ;
+      (fun n ↦ ⌈3 / p.val * log n.1⌉.toNat) n ≤ (fun n ↦ (⌈3 / p.val * log n.1⌉.toNat.factorial : ℝ) ) n := by
       intro n; simp only; norm_cast; exact Nat.self_le_factorial _
 
-    have mono : Monotone (fun n : {n : ℕ // n > 0} ↦ (⌈3 / p.val * log n.1⌉.toNat : ℝ)) := by {
+    have mono :
+    Monotone (fun n : {n : ℕ // n > 0} ↦
+      let p := pt ⟨n.1,n.2⟩ l θ hθ; (⌈3 / p.val * log n.1⌉.toNat : ℝ)) := by {
       intro ⟨a,a'⟩ ⟨b,b'⟩ od; simp only
+      set pta := pt ⟨a,a'⟩ l θ hθ; obtain ap := pta.2
+      set ptb := pt ⟨b,b'⟩ l θ hθ; obtain bp := ptb.2
       gcongr; rw [Int.toNat_le]
-      have arith0 : ⌈3 / p.1 * log b⌉.toNat = ⌈3 / p.1 * log b⌉ := by
-        simp only [Int.ofNat_toNat, sup_eq_left]
-        positivity
-      rw [arith0]
-      have arith : a ≤ b := by omega
-      grw [arith]
+
+      simp only [Int.ofNat_toNat, le_sup_iff]
+      left
+      gcongr
+      { subst ptb; simp only [pt, NNReal.coe_rpow, NNReal.coe_natCast]
+        positivity }
+      pick_goal 2; { simp only [Subtype.mk_le_mk] at od;exact od }
+      subst pta ptb; simp only [pt]; simp only [pt] at ap bp
+
+      by_cases cs : l = 0
+      · subst cs
+        have := NNReal.coe_nonneg θ
+        simp only [CharP.cast_eq_zero, div_zero] at hθ
+        linarith
+      · refine (NNReal.rpow_le_rpow_iff_of_neg ?_ ?_ ?_).mpr ?_
+        { norm_cast }
+        { norm_cast }
+        { simp only [sub_neg, NNReal.coe_lt_one]
+          grw [show 1 / (l:ℝ) ≤ 1 from by
+            refine (one_div_le ?_ ?_).mp ?_
+            · linarith
+            · simp only [Nat.cast_pos]; omega
+            · simp only [ne_eq, one_ne_zero, not_false_eq_true, div_self, Nat.one_le_cast]
+              omega
+            ] at hθ
+          apply hθ }
+        { simp only [Subtype.mk_le_mk] at od; norm_cast }
     }
 
     apply Filter.tendsto_atTop_mono h
     simp only
     apply Filter.tendsto_atTop_atTop_of_monotone mono
     intro x
-    have arith0 :∀(n : {n : ℕ // n > 0}), (⌈3 / p.1 * log n⌉.toNat : ℝ) = ⌈3 / p.1 * log n⌉ := by
+
+    have arith0 :
+      ∀(n : {n : ℕ // n > 0}),
+      (⌈3 / (pt ⟨n.1,n.2⟩ l θ hθ).1 * log n⌉.toNat : ℝ)
+        = ⌈3 / (pt ⟨n.1,n.2⟩ l θ hθ).1 * log n⌉ := by
       intro n; norm_cast; simp only [NNReal.coe_div, NNReal.coe_ofNat, Int.ofNat_toNat, sup_eq_left]
       positivity
     conv => enter [1];ext x';enter[2]; rw [arith0 x']
 
-    use (⟨⌈rexp (x * p.1 / 3)⌉.toNat,by simp;positivity⟩)
-    simp only
-    have arith : ⌈rexp (x * ↑p.1 / 3)⌉.toNat = ⌈rexp (x * ↑p.1 / 3)⌉ := by
-      symm
-      rw [Int.eq_natCast_toNat]
-      positivity
-    have arith' : (⌈rexp (x * ↑p.1 / 3)⌉.toNat : ℝ) = ⌈rexp (x * ↑p.1 / 3)⌉ := by
-      symm
+    unfold pt; simp only
+    use ( ⟨⌈ rexp (x / 3) ⌉.toNat , by simp ; positivity⟩ )
+    simp only; push_cast
+    -- CASTING
+    have arith : (⌈ rexp (x / 3) ⌉.toNat : ℝ)  = ( (⌈ rexp (x / 3) ⌉.toNat : ℤ) : ℝ ) := by
       norm_cast
-      rw [arith]
+    rw [arith]; clear arith
+    have arith' : (⌈ rexp (x / 3) ⌉.toNat : ℤ)= ⌈rexp (x / 3)⌉ := by
+      simp only [Int.ofNat_toNat, sup_eq_left]
+      positivity
     rw [arith']
+
     trans; pick_goal 2; { apply Int.le_ceil }
-    grw [←Int.le_ceil (rexp (x * ↑p.val / 3))]
+
+    rw [div_mul_comm,mul_comm]
+    have tmp : log (rexp (x / 3)) ≤ log ⌈rexp (x/3)⌉ := by
+      gcongr; exact Int.le_ceil (rexp (x/3))
+    grw [←tmp]
     rw [log_exp]
-    simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true, div_mul_div_cancel₀']
-    rw [mul_div_assoc, div_self, mul_one]
-    simp only [ne_eq, NNReal.coe_eq_zero, hp, not_false_eq_true]
+    rw [←mul_div_assoc]
+    refine (le_div_iff₀ ?_).mpr ?_
+    { positivity }
+    clear h arith0
+    conv => enter [2]; rw [mul_comm,div_mul_comm]
+    rw [div_self]
+    pick_goal 2; { simp only [ne_eq, OfNat.ofNat_ne_zero, not_false_eq_true] }
+    by_cases cs : x > 0
+    · rw [mul_comm,mul_le_mul_iff_left₀ cs]
+      refine (rpow_le_iff_le_log ?_ ?_).mpr ?_
+      { positivity }
+      { linarith }
+      by_cases cs' : l = 0
+      · subst cs'
+        simp at hθ
+        grw [hθ]
+        simp only [zero_sub, neg_mul, one_mul]
+        refine neg_le_iff_add_nonneg.mpr ?_
+        positivity
+      · have : (θ.toReal - 1) < 0 := by
+          have t : 1/(l:ℝ) ≤ 1 := by
+            simp only [one_div]
+            exact Nat.cast_inv_le_one l
+          grw [t] at hθ
+          simp only [sub_neg,gt_iff_lt]
+          assumption
+        grw [this]; simp only [zero_mul, ge_iff_le]
+        positivity
+    · simp only [gt_iff_lt, not_lt] at cs
+      by_cases cs' : x = 0
+      · subst cs'
+        rw [mul_comm]
+        simp only [mul_zero]
+        rfl
+      · rw [mul_comm 1]
+        have : x < 0 := by
+          rw [le_iff_eq_or_lt] at cs
+          cases cs
+          · contradiction
+          · assumption
+        by_cases cs'' : l = 0
+        · subst cs''
+          simp only [CharP.cast_eq_zero, div_zero] at hθ
+          have := NNReal.coe_nonneg θ
+          linarith
+        · rw [mul_le_mul_left_of_neg (this)]
+          have : ↑⌈rexp (x / 3)⌉ = 1 := by
+            refine Int.ceil_eq_iff.mpr ?_
+            simp only [Int.cast_one, sub_self, exp_le_one_iff]
+            constructor
+            · positivity
+            · grw [this]; simp only [zero_div, le_refl]
+          rw [this]; simp only [Int.cast_one, one_rpow, le_refl]
 
   have ne : Nonempty {n : ℕ // n > 0} := by {
     refine nonempty_subtype.mpr ?_; use 1; linarith }
@@ -417,17 +542,19 @@ lemma P2_2 (p : ℙval)(hp : p.1 ≠ 0) :
   · rw [Filter.eventually_atTop]
     use ⟨3,by linarith⟩
     intro n bound
-    have ineq := P2_1 p n bound hp
+    have ineq := P2_1 l θ hθ
     simp only at ineq
     grw [ineq]
-    simp only [exp_zero, one_div, le_refl]
+    · simp only [exp_zero, one_div, le_refl]
+    · simp only [PNat.mk_ofNat, ge_iff_le] at bound; norm_cast
 /- EXTRACTOR
    #  ∀ ε>0, ∃ n₂, P[α(G) ≥ x(n₂)] < ε                                      by:def lim? -/
-lemma P2_Extractor (p : ℙval)(hp : p.1 ≠ 0):
+lemma P2_Extractor (l: ℕ)(θ : ℝ≥0)(hθ : θ < 1 / (l : ℝ)):
   ∀(eps : ℝ)(_ : eps > 0), ∃(n : ℕ)(h : n > 0),
-    PrI_αG_gt p ⟨n,h⟩ ⌈3 / p.1 * log n⌉.toNat < eps := by
+    PrI_αG_gt (pt ⟨n,h⟩ l θ hθ) ⟨n,h⟩ ⌈3 / (pt ⟨n,h⟩ l θ hθ).1 * log n⌉.toNat < eps
+  := by
   intro eps bde
-  have prev := P2_2 p hp
+  have prev := P2_2 l θ hθ
   have : Nonempty { n : ℕ // n > 0 } := by
     refine nonempty_subtype.mpr ?_; use 1; linarith
   rw [Metric.tendsto_atTop] at prev
@@ -438,6 +565,14 @@ lemma P2_Extractor (p : ℙval)(hp : p.1 ≠ 0):
   rw [abs_of_nonneg] at prev
   pick_goal 2; { unfold PrI_αG_gt; exact MeasureTheory.measureReal_nonneg }
   assumption
+/- proof of antitonicity -/
+lemma P2_anti (l : ℕ)(θ : ℝ≥0)(ht : θ < 1 / (l : ℝ))
+  (n : ℕ)(hn : n > 0)(n' : ℕ)(hn' : n' ≥ n) :
+  PrI_αG_gt (pt ⟨n,hn⟩ l θ ht) ⟨n,hn⟩ ⌈3 / (pt ⟨n,hn⟩ l θ ht).1 * log n⌉.toNat
+  ≥
+  PrI_αG_gt (pt ⟨n',by linarith⟩ l θ ht) ⟨n',by linarith⟩ ⌈3 / (pt ⟨n',by linarith⟩ l θ ht).1 * log n'⌉.toNat
+  := by
+  sorry
 /-===============================================================-/
 
 /-===============================================================-/
@@ -646,22 +781,19 @@ theorem anti_graph_exists (p : ℙval) (n : API_𝔾.Nval) :
    Given that the probabilities of both add up to ≤ n and that both graphs are defined on
    n vertices!
 # choose n = max(n₁, n₂), ε = 0.5  ⇝  G with P[X ≥ n₁/2] + P[α(G) ≥ x(n₂)] < 0.5 + 0.5 -/
-theorem anti_graph (p : ℙval) (n : ℕ)(h : 0 < n) (maxl minc sz : ℕ) :
-  let N : API_𝔾.Nval := ⟨n,h⟩;
-  Pr_cycles_count_le_ge p N maxl minc < 1/(2 : ℝ) →
-  PrI_αG_gt p N sz < 1/(2 : ℝ) →
-  ∃(f : ΩK N), G_cycles_oflen_le_count f maxl < minc ∧ αG f < sz := by
-  intro N pr1 pr2
-  unfold Pr_cycles_count_le_ge at pr1; simp only at pr1
-  unfold PrI_αG_gt at pr2
-  set M := (EKμ p N).real
+theorem anti_graph {p : ℙval}(n : ℕ)(h : 0 < n){maxl minc: ℕ}
+  (P1: Pr_cycles_count_le_ge p ⟨n,h⟩ maxl minc < 1/(2 : ℝ) )
+  (P2 : PrI_αG_gt p ⟨n,h⟩ ⌈3 / p.1 * log n⌉.toNat < 1/(2 : ℝ) )
+  : ∃(f : ΩK ⟨n,h⟩), G_cycles_oflen_le_count f maxl < minc ∧ αG f < ⌈3 / p.1 * log n⌉.toNat := by
+  unfold Pr_cycles_count_le_ge at P1; simp only at P1
+  unfold PrI_αG_gt at P2
+  set M := (EKμ p ⟨n,h⟩).real
   set F1 := {f | G_cycles_oflen_le_count f maxl ≥ minc}
-  set F2 := (G_αG_ge N sz)
+  set F2 := (G_αG_ge ⟨n,h⟩ ⌈3 / p.1 * log n⌉.toNat)
   have t0 : M (F1 ∪ F2) ≤ M F1 + M F2 := by exact MeasureTheory.measureReal_union_le F1 F2;
   have t1 : M F1 + M F2 < 1 := by linarith
   grw [←t0] at t1
-  apply ( anti_graph_exists p N (F1 ∪ F2) ) at t1
-  clear pr1 pr2 t0
+  apply ( anti_graph_exists p ⟨n,h⟩ (F1 ∪ F2) ) at t1
   obtain ⟨af,t1⟩ := t1
   simp only [Set.compl_union, Set.mem_inter_iff] at t1; obtain ⟨s1,s2⟩ := t1
   -- rewrite them back into sets
@@ -672,7 +804,7 @@ theorem anti_graph (p : ℙval) (n : ℕ)(h : 0 < n) (maxl minc sz : ℕ) :
     assumption
   · subst F2
     rw [
-      ←Set.mem_setOf_eq (p := fun f ↦ αG f < sz),
+      ←Set.mem_setOf_eq (p := fun f ↦ αG f < ⌈3 / p.1 * log n⌉.toNat),
       ←G_αG_lt,
       αG_lt_eq_ge_complement
     ]; assumption
@@ -682,20 +814,27 @@ theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
     ∃ (n : ℕ) (G : SimpleGraph (Fin n)), G.egirth > l ∧ G.chromaticNumber > k := by
 
   --## let n := SPECIFIED LATER ℕ
-
-  --## let G ~ G(n, p)
-
   --## let X := "number of cycles in G of size ≤ l"
 
-  -- [TODO] pass NON_ZERO probability into P2_Extractor
-  have P1 := P1_Extractor l sorry sorry (1/2) (by linarith)
-  obtain ⟨n1,bd1,P1⟩ := P1
+  by_cases cs : l > 0
+  · obtain ⟨θ,tspec⟩ : ∃(t : ℝ≥0), t < 1 / (l:ℝ) := by
+      use 0; positivity
 
-  -- [TODO] pass NON_ZERO probability into P2_Extractor
-  have P2 := P2_Extractor sorry sorry (1/2) (by linarith)
-  obtain ⟨n2,bd2,P2⟩ := P2
+    have P1_base := P1_Extractor l θ tspec (1/2) (by linarith)
+    obtain ⟨n1,bd1,P1⟩ := P1_base
 
-  let n' := max n1 n2;
+    have P2_base := P2_Extractor l θ tspec (1/2) (by linarith)
+    obtain ⟨n2,bd2,P2⟩ := P2_base
+
+    let n' := max n1 n2
+
+    have P1' := P1_anti l θ tspec n1 bd1 n' (by subst n'; exact Nat.le_max_left n1 n2)
+    grw [P1'] at P1; clear P1'
+    have P2' := P2_anti l θ tspec n2 bd2 n' (by subst n'; exact Nat.le_max_right n1 n2)
+    grw [P2'] at P2; clear P2'
+
+    obtain ⟨ Gf,fspec ⟩:= anti_graph n' (by omega) P1 P2
+    sorry
 
   /- Show that for every cycle, removing a vertex x from a cycle v -> u x v -> u means either
      - there exist no other u -> v - disjoint path meaning cycle length of infinity
@@ -711,7 +850,7 @@ theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
   --#  α(G') < x                               by:choice of n
   --#  α(G') < ⌈3/p * ln(n)⌉                   by:rw x
 
-  #check mul_χ_α_ge
+  -- DONE FOR NOW
   --#  χ(G') ≥ |G'| / α(G')                    by:reorder
   --#  χ(G') ≥ (n/2) / α(G')                   by:def G'
   --#  χ(G') ≥ (n/2) / ⌈3/p * ln(n)⌉           by:grw α(G') < ⌈3/p * ln(n)⌉
@@ -723,5 +862,19 @@ theorem high_girth_high_chromatic_number (k : ℕ) (l : ℕ) :
 
   --#  adjust n = max(n, nₓ)  ⇝  χ(G') > k     by:apply previous stmt
   --# Qed.
-
-  sorry
+  /- WHEN L IS 0 -/
+  · simp only [gt_iff_lt, not_lt, nonpos_iff_eq_zero] at cs
+    subst cs
+    use (k + 1)
+    use (SimpleGraph.completeGraph ( Fin (k + 1) ) )
+    constructor
+    · simp only [SimpleGraph.completeGraph_eq_top, CharP.cast_eq_zero, gt_iff_lt]
+      have :=
+        SimpleGraph.three_le_egirth
+        (α := Fin (k+1))
+        (G := SimpleGraph.completeGraph ( Fin (k + 1) ))
+      simp only [SimpleGraph.completeGraph_eq_top] at this
+      grw [←this];exact three_pos
+    · simp only [SimpleGraph.completeGraph_eq_top, SimpleGraph.chromaticNumber_top,
+      Fintype.card_fin, Nat.cast_add, Nat.cast_one, gt_iff_lt]
+      norm_cast; linarith
