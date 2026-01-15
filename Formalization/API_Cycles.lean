@@ -1376,6 +1376,9 @@ theorem EcycToPcyc_markov (n : Nval)(maxl minc : ℕ)(h : minc > 0) :
   grw [←markov]
   conv => enter [1,2,1]; ext; rw [ge_iff_le]
   conv => enter [2,2,1]; ext; rw [Nat.cast_le]
+/- =============================================== -/
+/- Theorems about upcasts -/
+
 
 end Probability
 

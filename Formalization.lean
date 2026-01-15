@@ -8,6 +8,7 @@ import Mathlib.Data.Nat.Factorial.Basic
 import Mathlib.Combinatorics.SimpleGraph.Girth
 import Mathlib.Combinatorics.SimpleGraph.Coloring
 import Mathlib.Analysis.SpecialFunctions.Exp
+import Mathlib.Analysis.Real.Pi.Bounds
 
 
 --import Formalization.Probability
@@ -19,7 +20,7 @@ set_option linter.style.commandStart false
 set_option linter.style.induction false
 
 open API_ℙ API_𝕀 API_ℂ Real
-open scoped API_ℂ API_𝕀 NNReal Real
+open scoped API_ℙ API_ℂ API_𝕀 NNReal Real
 open MeasureTheory
 
 /-===============================================================-/
@@ -261,10 +262,10 @@ lemma P1_anti (l : ℕ)(θ : ℝ≥0)(ht : θ < 1 / (l : ℝ))
   ≥
   Pr_cycles_count_le_ge (pt ⟨n',by linarith⟩ l θ ht) ⟨n',by linarith⟩ l (⌈n'/(2:ℝ)⌉.toNat)
   := by
-  unfold Pr_cycles_count_le_ge; simp only
-  unfold pt; simp only [Set.toFinset_card, Set.coe_setOf, Subtype.forall,
-    SimpleGraph.edgeSet_top, Set.mem_setOf_eq, CycleLen_eval, ge_iff_le, Int.toNat_le]
-  simp_rw [Measure.real_def]
+  unfold Pr_cycles_count_le_ge pt; simp only
+  set Mn := (EKμ  ⟨n^ (θ.toReal - 1),_⟩ _)
+  set Mn' := (EKμ  ⟨n'^ (θ.toReal - 1),_⟩ _)
+  simp_rw [Measure.real_def, ge_iff_le]
   rw [ENNReal.toReal_le_toReal]
   pick_goal 2; { apply measure_ne_top }
   pick_goal 2; { apply measure_ne_top }
@@ -372,7 +373,8 @@ lemma P2_1 (l: ℕ)(θ : ℝ≥0)(hθ : θ < 1 / (l : ℝ)) :
       refine one_le_mul_of_one_le_of_one_le ?_ ?_
       · have := p.2; grw [this]; simp only [NNReal.coe_one, ne_eq, one_ne_zero, not_false_eq_true,
         div_self, le_refl]
-      · refine (le_log_iff_exp_le ?_).mpr ?_
+      · have t := Real.abs_exp_sub_one_le (x := 2)
+        refine (le_log_iff_exp_le ?_).mpr ?_
         · simp only [Nat.cast_pos]; linarith
         · grw [←hn]
           simp only [Nat.cast_ofNat]
@@ -572,12 +574,24 @@ lemma P2_anti (l : ℕ)(θ : ℝ≥0)(ht : θ < 1 / (l : ℝ))
   ≥
   PrI_αG_gt (pt ⟨n',by linarith⟩ l θ ht) ⟨n',by linarith⟩ ⌈3 / (pt ⟨n',by linarith⟩ l θ ht).1 * log n'⌉.toNat
   := by
+  unfold PrI_αG_gt pt; simp only
+  set Mn := (EKμ  ⟨n^ (θ.toReal - 1),_⟩ _)
+  set Mn' := (EKμ  ⟨n'^ (θ.toReal - 1),_⟩ _)
+  simp_rw [Measure.real_def, ge_iff_le]
+  rw [ENNReal.toReal_le_toReal]
+  pick_goal 2; { apply measure_ne_top }
+  pick_goal 2; { apply measure_ne_top }
+  unfold G_αG_ge
   sorry
 /-===============================================================-/
 
 /-===============================================================-/
 /- PART 3 -/
 #check SimpleGraph.Coloring
+/-===============================================================-/
+/- Forall Graphs G any non-empty! subgraph G', α(G') ≤ α(G)
+   ## χ(G') * α(G') ≥ |G'|                    by:facts and logic -/
+#check α_le_induced_α
 /-===============================================================-/
 /- Forall Graphs G, χ(G) * α(G) ≥ |G|
    ## χ(G') * α(G') ≥ |G'|                    by:facts and logic -/

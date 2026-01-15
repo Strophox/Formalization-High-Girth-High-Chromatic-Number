@@ -360,9 +360,137 @@ def ΩK_EQ_FinGraph : ΩK n ≃ Fingraph n := {
 }
 /- =============================================== -/
 
--- [TODO]
-/- G with P[X ≥ n₁/2] + P[α(G) ≥ x(n₂)] < 0.5 + 0.5
-   -- Show any f in the complement of the union of events (X ≥ n/2),(α(G) ≥ x(n)) implies
-      that the graph f has X < n / 2 and α(G) < x(n) [TODO]
--/
+/- =============================================== -/
+/- # Induced Subgraphs -/
+/- =============================================== -/
+/- maps values of the induced subvertex set to the new vertices of the subgraph -/
+noncomputable
+def PVKtoIdxSub {n : Nval}(sub : PVK n) : sub ↪ Fin (sub.toFinset.card) :=
+  ⟨ fun i ↦
+      ⟨(sub.toFinset.sort (· ≤ ·)).idxOf i.1, by
+        have lt : List.idxOf (i.1) (sub.toFinset.sort fun x1 x2 ↦ x1 ≤ x2) + 1
+          ≤ (sub.toFinset.sort (· ≤ ·)).length := by
+          refine List.idxOf_lt_length_of_mem ?_
+          simp only [Finset.mem_sort, Set.mem_toFinset, Subtype.coe_prop]
+        grw [@Nat.lt_iff_add_one_le,lt]
+        rw [Finset.length_sort]
+      ⟩
+  ,by
+    intro ⟨i1,i1p⟩ ⟨i2,i2p⟩; simp only [Fin.mk.injEq]
+    have h : i1 ∈ (Set.toFinset sub).sort := by
+      simpa only [Finset.mem_sort, Set.mem_toFinset]
+    have h' : i2 ∈ (Set.toFinset sub).sort := by
+      simpa only [Finset.mem_sort, Set.mem_toFinset]
+    intro a; simp only [Subtype.mk.injEq]
+    rw [←List.idxOf_inj h h']; assumption
+  ⟩
+/- maps new vertices back to the supergraph's -/
+noncomputable
+def IdxSubtoPVK {n : Nval}(sub : PVK n) : Fin (sub.toFinset.card) ↪ sub :=
+  ⟨ fun i ↦
+      ⟨(sub.toFinset.sort (· ≤ ·))[i.1], by
+        rw [← Set.mem_toFinset]
+        rw [← Finset.mem_sort (· ≤ ·)]
+        simp only [List.getElem_mem]
+      ⟩
+  ,by
+    intro ⟨i1,i1p⟩ ⟨i2,i2p⟩; simp only [Subtype.mk.injEq]
+    intro heq; simp only [Fin.mk.injEq]
+    have : List.Nodup (Set.toFinset sub).sort := by
+      exact Finset.sort_nodup (Set.toFinset sub) fun a b ↦ a ≤ b
+    simp_rw [List.getElem_eq_getElem?_get] at heq
+    refine List.getElem?_inj
+      (i := i1) (j := i2) ?_ this ?_
+    · simp only [Finset.length_sort, i1p]
+    · grind only [= List.nodup_iff_count, = get_getElem?, = List.getElem?_eq_none,
+      = List.nodup_iff_pairwise_ne, = getElem?_pos, = getElem?_neg]
+  ⟩
+/- They are a bijection -/
+noncomputable
+def Idx_EQ_Sub {n : Nval}(sub : PVK n) : Fin (sub.toFinset.card) ≃ sub := {
+  toFun := IdxSubtoPVK sub
+  invFun := PVKtoIdxSub sub
+  right_inv := by
+    intro v
+    simp only [IdxSubtoPVK, PVKtoIdxSub, Function.Embedding.coeFn_mk, List.getElem_idxOf,
+      Subtype.coe_eta]
+  left_inv := by
+    intro ⟨v,vp⟩;
+    simp only [PVKtoIdxSub, IdxSubtoPVK, Function.Embedding.coeFn_mk, Fin.mk.injEq]
+    rw [List.idxOf_getElem]
+    exact Finset.sort_nodup (Set.toFinset sub) fun x1 x2 ↦ x1 ≤ x2
+}
+/- Induced subgraph -/
+@[local simp]
+private
+abbrev sub_gt_zero {n}(sub : PVK n)(_ : sub ≠ ∅) : sub.toFinset.card > 0 := by
+  rename_i h;by_contra cnt;
+  simp only [gt_iff_lt,not_lt, nonpos_iff_eq_zero] at cnt;rw [Finset.card_eq_zero] at cnt
+  simp_all only [ne_eq, Set.toFinset_eq_empty]
+private
+abbrev sub_le_n {n}(sub : PVK n) : sub.toFinset.card ≤ n.1:= by
+  exact card_finset_fin_le (Set.toFinset sub)
+noncomputable
+def G_induce_on {n}(f : ΩK n)(sub : PVK n)(hs : sub ≠ ∅) :
+  ΩK (⟨sub.toFinset.card,sub_gt_zero sub hs⟩) :=
+  fun e ↦
+    ( Sym2.lift ⟨
+      fun (a : Fin (sub.toFinset.card)) (b : Fin (sub.toFinset.card)) ↦
+        ( if h:a.1=b.1 then false else if f ⟨s(
+          ⟨IdxSubtoPVK sub a,by simp only [Fin.is_lt]⟩
+          , ⟨IdxSubtoPVK sub b,by simp only [Fin.is_lt]⟩)
+          ,by
+          simp only [mem_EK_iff]
+          obtain ⟨a,ap⟩ := a; obtain ⟨b,bp⟩ := b; simp_all only
+          simp only [IdxSubtoPVK, Function.Embedding.coeFn_mk, Fin.eta, ne_eq]
+          by_contra cnt; apply h
+          apply List.getElem?_inj
+            (xs := ((Set.toFinset sub).sort fun x1 x2 ↦ x1 ≤ x2))
+          · simpa only [Finset.length_sort]
+          · simp only [Finset.sort_nodup]
+          · simp_rw [List.getElem_eq_getElem?_get] at cnt
+            grind only [= get_getElem?, = List.getElem?_eq_none, = getElem?_pos, = getElem?_neg]
+          ⟩ = true
+          then true else false
+        )
+      , by
+      simp only [Bool.if_false_right, Bool.decide_eq_true, Bool.and_true]
+      intro a b; split_ifs with cif0 cif1 cif2 <;> try grind
+      conv => enter [1,1,1]; rw [Sym2.eq_swap]
+    ⟩ e.1 )
+-- PROPERTIES
+-- Preserves Adjacency
+theorem not_adj_iff {n}(f : ΩK n)(sub : PVK n)(hs : sub ≠ ∅) :
+  ∀(a b : Fin sub.toFinset.card)(neq : a ≠ b),
+    (G_induce_on f sub hs) ⟨s(a,b),by
+      simp only [SimpleGraph.edgeSet_top, Set.mem_setOf_eq,
+      Sym2.isDiag_iff_proj_eq, neq, not_false_eq_true]⟩ = false
+    →
+    f ⟨s(⟨ IdxSubtoPVK sub a,by simp only [Fin.is_lt] ⟩,
+         ⟨ IdxSubtoPVK sub b,by simp only [Fin.is_lt] ⟩),
+        by
+        obtain ⟨a,ap⟩ := a; obtain ⟨b,bp⟩ := b
+        simp only [ne_eq, Fin.mk.injEq] at neq
+        simp only [SimpleGraph.edgeSet_top, IdxSubtoPVK, Function.Embedding.coeFn_mk, Fin.eta,
+          Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq]
+        by_contra cnt; apply neq
+        apply List.getElem?_inj
+          (xs := ((Set.toFinset sub).sort fun x1 x2 ↦ x1 ≤ x2))
+        · simpa only [Finset.length_sort]
+        · simp only [Finset.sort_nodup]
+        · simp_rw [List.getElem_eq_getElem?_get] at cnt
+          grind only [= get_getElem?, = List.getElem?_eq_none, = getElem?_pos, = getElem?_neg]
+      ⟩
+     = false := by
+     intro ⟨a,ap⟩ ⟨b,bp⟩ neq
+     unfold G_induce_on
+     simp only [Bool.if_false_right, Bool.decide_eq_true, Bool.and_true, Sym2.lift_mk,
+       dite_eq_left_iff]
+     intro neq2; simp only [ne_eq, Fin.mk.injEq] at neq
+     specialize neq2 neq
+     simp only [IdxSubtoPVK, Function.Embedding.coeFn_mk, Fin.eta]
+     rw [←neq2]; congr
+
+
+
 end API_ℙ

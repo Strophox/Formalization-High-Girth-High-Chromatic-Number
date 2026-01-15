@@ -432,7 +432,101 @@ theorem F_any_ind_ofsz_eq_G_αG_ge (sz : ℕ) :
     simp_all only [Set.mem_setOf_eq, ge_iff_le]
   · intro h; rw [F_any_ind_ofsz_iff_αG_ge]
     simp_all only [Set.mem_setOf_eq, ge_iff_le]
-  /- =============================================== -/
+/- =============================================== -/
+
+/- =============================================== -/
+/- Induced Graphs theorems -/
+/- =============================================== -/
+/- The embedding from all Indsets in the induced graph to a ≤sized Indset the supergraph -/
+def mapIndSets_up {n}(f : ΩK n)(sub : PVK n)(hs : sub ≠ ∅) :
+  IndSetsG (G_induce_on f sub hs) ↪ IndSetsG f :=
+  ⟨ fun I ↦
+    let : Fintype I.1 := by exact Fintype.ofFinite ↑↑I;
+    ⟨ ( (I.1.toFinset.attach.image ( fun ⟨v,h⟩ ↦ (IdxSubtoPVK sub).1 v )) : Finset (Fin n.1) )
+      ,by
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+      unfold is_IndSetG; simp only [SetLike.coe_sort_coe, ne_eq, Subtype.forall, Finset.mem_image,
+        Finset.mem_attach, true_and, Subtype.exists, Set.mem_toFinset, exists_prop,
+        forall_exists_index, forall_and_index, Subtype.mk.injEq]
+      intro a b hb hqa c d hd hqd neq
+      simp_rw [←hqa,←hqd]
+
+      have th: ¬b=d := by
+        by_contra cnt; apply neq; rw [←hqd,←hqa]
+        grind only [cases eager Subtype];
+
+      apply not_adj_iff f sub hs b d th
+      · obtain ⟨I,Ip⟩ := I
+        simp only [IndSetsG, is_IndSetG, ne_eq, Subtype.forall, Subtype.mk.injEq, Finset.mem_filter,
+          Finset.mem_univ, true_and] at Ip
+        specialize Ip b hb d hd th
+        assumption
+    ⟩
+    ,by
+      intro I1 I2
+      simp only [Function.Embedding.toFun_eq_coe, Finset.coe_image, Finset.coe_attach,
+        Set.image_univ, Subtype.mk.injEq]
+      intro ha
+      ext x
+      rw [Set.range_eq_iff] at ha; simp only [Set.mem_range, Subtype.exists, Set.mem_toFinset,
+        exists_prop, Subtype.forall, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂] at ha
+      obtain ⟨ha,hb⟩ := ha
+      constructor
+      · intro mem; specialize ha x mem
+        obtain ⟨a',⟨amem, ha⟩⟩ := ha
+        rw [SetCoe.ext_iff] at ha
+        apply (IdxSubtoPVK sub).injective at ha
+        rw [ha] at amem; assumption
+      · intro mem; specialize hb x mem
+        obtain ⟨b',⟨bmem, hb⟩⟩ := hb
+        rw [SetCoe.ext_iff] at hb
+        apply (IdxSubtoPVK sub).injective at hb
+        rw [hb] at bmem; assumption
+  ⟩
+-- PROPERTIES
+-- Only maps to Indsets to Indsets of the same size
+theorem mapIndSets_up_card {n}(f : ΩK n)(sub : PVK n)(hs : sub ≠ ∅) :
+  ∀(I : IndSetsG (G_induce_on f sub hs)), let : Fintype I := by exact Fintype.ofFinite ↑↑I;
+    I.1.toFinset.card = ((mapIndSets_up f sub hs).1 I).1.toFinset.card := by
+    intro Iu; simp only [Function.Embedding.toFun_eq_coe]
+    unfold mapIndSets_up; simp only [Function.Embedding.toFun_eq_coe,
+      Finset.coe_image, Finset.coe_attach, Set.image_univ, Function.Embedding.coeFn_mk,
+      Set.toFinset_range, Finset.univ_eq_attach]
+    let : Fintype Iu := by exact Fintype.ofFinite ↑↑Iu
+    rw [Finset.card_image_of_injective Iu.1.toFinset.attach]
+    pick_goal 2; {
+      intro a b; simp only
+      intro heq; rw [SetCoe.ext_iff] at heq
+      apply (IdxSubtoPVK sub).2 at heq
+      norm_cast at heq
+    }
+    simp only [Set.toFinset_card, Finset.card_attach]
+-- EXTRACTOR
+theorem IndSet_up_exists {n}(f : ΩK n)(sub : PVK n)(hs : sub ≠ ∅) :
+  ∀(I : IndSetsG (G_induce_on f sub hs)), ∃(I': IndSetsG f),
+  let : Fintype I := by exact Fintype.ofFinite ↑↑I;
+  I.1.toFinset.card = I'.1.toFinset.card := by
+  intro I; use (mapIndSets_up f sub hs).1 I
+  simp only
+  apply mapIndSets_up_card
+-- FINAL
+theorem α_le_induced_α {n}(G : ΩK n) :
+∀(S':PVK n)(h:S'≠∅), αG (G_induce_on G S' h) ≤ αG G := by
+  intro S sh
+  unfold αG
+  generalize ch : ( MaxIndSet G ) = Imax
+  generalize ch' : ( MaxIndSet (G_induce_on G S sh) ) = Imax'
+  unfold MaxIndSet at ch; unfold MaxIndSet at ch'
+  have spec := MaxIndSetP G
+  have specSub := MaxIndSetP (G_induce_on G S sh)
+  rw [ch] at spec; rw [ch'] at specSub
+  clear ch ch'
+  obtain ⟨I1,Ip⟩ := IndSet_up_exists G S sh Imax'
+  simp only at Ip; rw [Ip]
+  unfold isMax_Indset at spec
+  specialize spec I1
+  rw [ge_iff_le] at spec
+  assumption
 
 end IndSets
 
